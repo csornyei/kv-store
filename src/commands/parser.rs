@@ -1,4 +1,6 @@
+use std::fmt::{self, Display, Formatter};
 use std::io::{Error, ErrorKind};
+use std::str::FromStr;
 
 #[derive(Debug, PartialEq)]
 pub enum CommandNames {
@@ -7,18 +9,32 @@ pub enum CommandNames {
     DEL,
 }
 
-fn string_to_command_name(s: &str) -> Result<CommandNames, Error> {
-    match s {
-        "SET" => Ok(CommandNames::SET),
-        "GET" => Ok(CommandNames::GET),
-        "DEL" => Ok(CommandNames::DEL),
-        _ => Err(Error::new(ErrorKind::InvalidInput, "Invalid command")),
+impl Display for CommandNames {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            CommandNames::SET => write!(f, "SET"),
+            CommandNames::GET => write!(f, "GET"),
+            CommandNames::DEL => write!(f, "DEL"),
+        }
+    }
+}
+
+impl FromStr for CommandNames {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "SET" => Ok(CommandNames::SET),
+            "GET" => Ok(CommandNames::GET),
+            "DEL" => Ok(CommandNames::DEL),
+            _ => Err(Error::new(ErrorKind::InvalidInput, "Invalid command")),
+        }
     }
 }
 
 pub struct Command {
     pub name: CommandNames,
-    args: Vec<String>,
+    pub args: Vec<String>,
 }
 
 impl Command {
@@ -55,9 +71,13 @@ impl Command {
         }
         Ok(())
     }
+}
 
-    pub fn from_string(line: String) -> Result<Command, Error> {
-        let (name, args) = parse_line(line)?;
+impl FromStr for Command {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (name, args) = parse_line(s.to_string())?;
         Command::validate_args(&name, args.clone())?;
         Ok(Command::new(name, args))
     }
@@ -69,14 +89,14 @@ fn parse_line(line: String) -> Result<(CommandNames, Vec<String>), Error> {
         return Err(Error::new(ErrorKind::InvalidInput, "No command"));
     }
     if parts.len() < 2 {
-        let cmd = string_to_command_name(parts[0])?;
+        let cmd = CommandNames::from_str(parts[0])?;
         return Ok((cmd, Vec::new()));
     }
 
     let command = parts[0].to_string();
     let args: Vec<String> = parts[1].trim().split(' ').map(|s| s.to_string()).collect();
 
-    let cmd = string_to_command_name(&command)?;
+    let cmd = CommandNames::from_str(&command)?;
     Ok((cmd, args))
 }
 
@@ -86,10 +106,10 @@ mod parser_tests {
 
     #[test]
     fn test_string_to_commands() {
-        assert_eq!(string_to_command_name("SET").unwrap(), CommandNames::SET);
-        assert_eq!(string_to_command_name("GET").unwrap(), CommandNames::GET);
-        assert_eq!(string_to_command_name("DEL").unwrap(), CommandNames::DEL);
-        assert!(string_to_command_name("INVALID").is_err());
+        assert_eq!(CommandNames::from_str("SET").unwrap(), CommandNames::SET);
+        assert_eq!(CommandNames::from_str("GET").unwrap(), CommandNames::GET);
+        assert_eq!(CommandNames::from_str("DEL").unwrap(), CommandNames::DEL);
+        assert!(CommandNames::from_str("INVALID").is_err());
     }
 
     #[test]
@@ -139,8 +159,8 @@ mod parser_tests {
     }
 
     #[test]
-    fn test_command_from_string() {
-        assert!(Command::from_string("SET key value".to_string()).is_ok());
-        assert!(Command::from_string("SET key".to_string()).is_err());
+    fn test_command_from_str() {
+        assert!(Command::from_str("SET key value").is_ok());
+        assert!(Command::from_str("SET key").is_err());
     }
 }

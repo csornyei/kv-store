@@ -1,4 +1,4 @@
-use kvstore::ThreadPool;
+use kvstore::utils::ThreadPool;
 use std::{
     io::{prelude::*, BufReader},
     net::{TcpListener, TcpStream},

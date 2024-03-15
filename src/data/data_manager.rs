@@ -28,6 +28,15 @@ impl DataManager {
                 let key = cmd.args[0].clone();
                 return self.del(key);
             }
+            CommandNames::AUTH => {
+                return Err("Not implemented".to_string());
+            }
+            CommandNames::CREATE_USER => {
+                return Err("Not implemented".to_string());
+            }
+            CommandNames::DELETE_USER => {
+                return Err("Not implemented".to_string());
+            }
         }
     }
 

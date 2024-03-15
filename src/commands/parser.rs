@@ -2,11 +2,15 @@ use std::fmt::{self, Display, Formatter};
 use std::io::{Error, ErrorKind};
 use std::str::FromStr;
 
+#[allow(non_camel_case_types)]
 #[derive(Debug, PartialEq)]
 pub enum CommandNames {
     SET,
     GET,
     DEL,
+    AUTH,
+    CREATE_USER,
+    DELETE_USER,
 }
 
 impl Display for CommandNames {
@@ -15,6 +19,9 @@ impl Display for CommandNames {
             CommandNames::SET => write!(f, "SET"),
             CommandNames::GET => write!(f, "GET"),
             CommandNames::DEL => write!(f, "DEL"),
+            CommandNames::AUTH => write!(f, "AUTH"),
+            CommandNames::CREATE_USER => write!(f, "CREATE_USER"),
+            CommandNames::DELETE_USER => write!(f, "DELETE_USER"),
         }
     }
 }
@@ -27,6 +34,9 @@ impl FromStr for CommandNames {
             "SET" => Ok(CommandNames::SET),
             "GET" => Ok(CommandNames::GET),
             "DEL" => Ok(CommandNames::DEL),
+            "AUTH" => Ok(CommandNames::AUTH),
+            "CREATE_USER" => Ok(CommandNames::CREATE_USER),
+            "DELETE_USER" => Ok(CommandNames::DELETE_USER),
             _ => Err(Error::new(ErrorKind::InvalidInput, "Invalid command")),
         }
     }
@@ -61,6 +71,30 @@ impl Command {
                 }
             }
             CommandNames::DEL => {
+                if args.len() != 1 {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        "Invalid number of arguments",
+                    ));
+                }
+            }
+            CommandNames::AUTH => {
+                if args.len() != 2 {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        "Invalid number of arguments",
+                    ));
+                }
+            }
+            CommandNames::CREATE_USER => {
+                if args.len() != 2 {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        "Invalid number of arguments",
+                    ));
+                }
+            }
+            CommandNames::DELETE_USER => {
                 if args.len() != 1 {
                     return Err(Error::new(
                         ErrorKind::InvalidInput,

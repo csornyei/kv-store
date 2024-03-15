@@ -1,15 +1,20 @@
 use crate::commands::{Command, CommandNames};
+use crate::data::auth_manager::{hash_password, verify_password};
 use std::collections::HashMap;
+
+use super::validate_password;
 
 #[derive(Debug)]
 pub struct DataManager {
     data: HashMap<String, String>,
+    users: HashMap<String, String>,
 }
 
 impl DataManager {
     pub fn new() -> DataManager {
         DataManager {
             data: HashMap::new(),
+            users: HashMap::new(),
         }
     }
 
@@ -29,13 +34,18 @@ impl DataManager {
                 return self.del(key);
             }
             CommandNames::AUTH => {
-                return Err("Not implemented".to_string());
+                let user_name = cmd.args[0].clone();
+                let password = cmd.args[1].clone();
+                return self.auth(user_name, password);
             }
             CommandNames::CREATE_USER => {
-                return Err("Not implemented".to_string());
+                let user_name = cmd.args[0].clone();
+                let password = cmd.args[1].clone();
+                return self.create_user(user_name, password);
             }
             CommandNames::DELETE_USER => {
-                return Err("Not implemented".to_string());
+                let user_name = cmd.args[0].clone();
+                return self.delete_user(user_name);
             }
         }
     }
@@ -56,6 +66,37 @@ impl DataManager {
         match self.data.remove(&key) {
             Some(_) => Ok("OK".to_string()),
             None => Err("Key not found".to_string()),
+        }
+    }
+
+    fn auth(&self, _user_name: String, password: String) -> Result<String, String> {
+        validate_password(&password)?;
+
+        let users_pw = self.users.get(&_user_name).ok_or("User not found")?;
+
+        if verify_password(users_pw, &password).map_err(|e| e.to_string())? {
+            Ok("OK".to_string())
+        } else {
+            Err("Invalid password".to_string())
+        }
+    }
+
+    fn create_user(&mut self, user_name: String, password: String) -> Result<String, String> {
+        validate_password(&password)?;
+
+        let hash = hash_password(&password).map_err(|e| e.to_string())?;
+
+        self.users.insert(user_name, hash);
+
+        Ok("OK".to_string())
+    }
+
+    fn delete_user(&mut self, user_name: String) -> Result<String, String> {
+        if self.users.contains_key(&user_name) {
+            self.users.remove(&user_name);
+            Ok("OK".to_string())
+        } else {
+            Err("User not found".to_string())
         }
     }
 }

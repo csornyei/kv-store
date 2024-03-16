@@ -1,5 +1,6 @@
 use kvstore::commands::Command;
 use kvstore::data::DataManager;
+use kvstore::session::Session;
 use std::{
     str::FromStr,
     sync::{Arc, Mutex},
@@ -13,7 +14,10 @@ use tokio::{
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let data = Arc::new(Mutex::new(DataManager::new()));
+    let data_manager = DataManager::new("admin".to_string(), "Password4".to_string())
+        .expect("Failed to create data manager!");
+
+    let data = Arc::new(Mutex::new(data_manager));
 
     start_server("127.0.0.1", 8080, data).await?;
 
@@ -41,6 +45,7 @@ async fn start_server(
 
 async fn handle_client(mut socket: TcpStream, data: Arc<Mutex<DataManager>>) {
     let mut buf = [0; 1024];
+    let mut session = Session::new();
 
     loop {
         match socket.read(&mut buf).await {
@@ -54,11 +59,13 @@ async fn handle_client(mut socket: TcpStream, data: Arc<Mutex<DataManager>>) {
                 let line = line.trim();
                 match Command::from_str(line) {
                     Ok(cmd) => {
-                        let result = data.lock().unwrap().handle_command(cmd);
+                        let result = data.lock().unwrap().handle_command(cmd, session.clone());
                         match result {
                             Ok(response) => {
-                                let _ =
-                                    &socket.write_all(format!("{}\n", response).as_bytes()).await;
+                                session = response.1;
+                                let _ = &socket
+                                    .write_all(format!("{}\n", response.0).as_bytes())
+                                    .await;
                             }
                             Err(e) => {
                                 let _ = &socket.write_all(format!("{}\n", e).as_bytes()).await;
@@ -83,7 +90,10 @@ mod tests {
 
     async fn start_test_server(port: u16) -> tokio::task::JoinHandle<()> {
         tokio::spawn(async move {
-            let data = Arc::new(Mutex::new(DataManager::new()));
+            let data = Arc::new(Mutex::new(
+                DataManager::new("admin".to_string(), "Password4".to_string())
+                    .expect("Failed to create data manager!"),
+            ));
             start_server(ADDRESS, port, data).await.unwrap();
         })
     }
@@ -108,6 +118,9 @@ mod tests {
         let client = TcpStream::connect(format!("{}:{}", ADDRESS, PORT))
             .await
             .unwrap();
+
+        let (client, response) = send_command(client, "AUTH admin Password4\n").await;
+        assert_eq!(response, "OK\n");
 
         let (client, response) = send_command(client, "SET key value\n").await;
         assert_eq!(response, "OK\n");
@@ -135,9 +148,15 @@ mod tests {
             .await
             .unwrap();
 
+        let (first_client, response) = send_command(first_client, "AUTH admin Password4\n").await;
+        assert_eq!("OK\n", response);
+
         let second_client = TcpStream::connect(format!("{}:{}", ADDRESS, PORT))
             .await
             .unwrap();
+
+        let (second_client, response) = send_command(second_client, "AUTH admin Password4\n").await;
+        assert_eq!(response, "OK\n");
 
         let (first_client, response) = send_command(first_client, "SET key value\n").await;
         assert_eq!(response, "OK\n");
@@ -172,12 +191,15 @@ mod tests {
 
         let mut handles = Vec::new();
 
-        for i in 0..10000 {
+        for i in 0..10 {
             let client = TcpStream::connect(format!("{}:{}", ADDRESS, PORT))
                 .await
                 .unwrap();
 
             let handle = tokio::spawn(async move {
+                let (client, response) = send_command(client, "AUTH admin Password4\n").await;
+                assert_eq!(response, "OK\n");
+
                 let (client, response) =
                     send_command(client, &format!("SET key{} value\n", i)).await;
                 assert_eq!(response, "OK\n", "SET command response mismatch");

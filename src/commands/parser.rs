@@ -11,6 +11,7 @@ pub enum CommandNames {
 
     // Authentication commands
     AUTH,
+    GET_USER,
     CREATE_USER,
     DELETE_USER,
 
@@ -26,6 +27,7 @@ impl Display for CommandNames {
             CommandNames::GET => write!(f, "GET"),
             CommandNames::DEL => write!(f, "DEL"),
             CommandNames::AUTH => write!(f, "AUTH"),
+            CommandNames::GET_USER => write!(f, "GET_USER"),
             CommandNames::CREATE_USER => write!(f, "CREATE_USER"),
             CommandNames::DELETE_USER => write!(f, "DELETE_USER"),
             CommandNames::GRANT => write!(f, "GRANT"),
@@ -43,6 +45,7 @@ impl FromStr for CommandNames {
             "GET" => Ok(CommandNames::GET),
             "DEL" => Ok(CommandNames::DEL),
             "AUTH" => Ok(CommandNames::AUTH),
+            "GET_USER" => Ok(CommandNames::GET_USER),
             "CREATE_USER" => Ok(CommandNames::CREATE_USER),
             "DELETE_USER" => Ok(CommandNames::DELETE_USER),
             "GRANT" => Ok(CommandNames::GRANT),
@@ -59,13 +62,35 @@ pub struct Command {
 
 impl Command {
     fn new(name: CommandNames, args: Vec<String>) -> Command {
-        if name == CommandNames::CREATE_USER {
-            let other_args = args[2..].join(" ");
-            let permissions = Command::parse_permissions(&other_args);
-            let args = vec![args[0].clone(), args[1].clone(), permissions.to_string()];
-
-            return Command { name, args };
+        match name {
+            CommandNames::CREATE_USER => {
+                return Command::new_create_user_command(name, args);
+            }
+            CommandNames::GRANT | CommandNames::REVOKE => {
+                return Command::new_auth_command(name, args);
+            }
+            _ => Command { name, args },
         }
+    }
+
+    fn new_create_user_command(name: CommandNames, args: Vec<String>) -> Command {
+        let password = args[1].clone();
+        let other_args = args[2..].join(" ");
+
+        let permissions = Command::parse_permissions(&other_args);
+
+        let args = vec![args[0].clone(), password, permissions.to_string()];
+
+        Command { name, args }
+    }
+
+    fn new_auth_command(name: CommandNames, args: Vec<String>) -> Command {
+        let other_args = args[1..].join(" ");
+
+        let permissions = Command::parse_permissions(&other_args);
+
+        let args = vec![args[0].clone(), permissions.to_string()];
+
         Command { name, args }
     }
 
@@ -103,6 +128,14 @@ impl Command {
                     ));
                 }
             }
+            CommandNames::GET_USER => {
+                if args.len() != 1 {
+                    return Err(Error::new(
+                        ErrorKind::InvalidInput,
+                        "Invalid number of arguments",
+                    ));
+                }
+            }
             CommandNames::CREATE_USER => {
                 if args.len() < 2 {
                     return Err(Error::new(
@@ -120,7 +153,7 @@ impl Command {
                 }
             }
             CommandNames::GRANT => {
-                if args.len() != 2 {
+                if args.len() < 2 {
                     return Err(Error::new(
                         ErrorKind::InvalidInput,
                         "Invalid number of arguments",
@@ -128,7 +161,7 @@ impl Command {
                 }
             }
             CommandNames::REVOKE => {
-                if args.len() != 2 {
+                if args.len() < 2 {
                     return Err(Error::new(
                         ErrorKind::InvalidInput,
                         "Invalid number of arguments",
@@ -174,6 +207,7 @@ impl Command {
             "GET" => Ok(current_permissions | 1 << 1),
             "DEL" => Ok(current_permissions | 1 << 2),
             "USER_ADMIN" => Ok(current_permissions | 1 << 3),
+
             _ => return Err(Error::new(ErrorKind::InvalidInput, "Invalid permission")),
         }
     }

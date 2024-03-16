@@ -17,6 +17,7 @@ use std::collections::HashMap;
 // 0b00001000 | 0b00000100 = 0b00001100
 
 #[allow(non_camel_case_types)]
+#[derive(Debug, PartialEq)]
 pub enum Permissions {
     NONE = 0,
     SET = 1 << 0,
@@ -25,11 +26,48 @@ pub enum Permissions {
     USER_ADMIN = 1 << 3,
 }
 
+impl Permissions {
+    pub fn from_u8(value: u8) -> Vec<Permissions> {
+        let mut permissions = Vec::new();
+
+        if value & (Permissions::SET as u8) != 0 {
+            permissions.push(Permissions::SET);
+        }
+
+        if value & (Permissions::GET as u8) != 0 {
+            permissions.push(Permissions::GET);
+        }
+
+        if value & (Permissions::DEL as u8) != 0 {
+            permissions.push(Permissions::DEL);
+        }
+
+        if value & (Permissions::USER_ADMIN as u8) != 0 {
+            permissions.push(Permissions::USER_ADMIN);
+        }
+
+        permissions
+    }
+}
+
 #[derive(Debug)]
-struct User {
-    _username: String,
+pub struct User {
+    username: String,
     password: String,
     permissions: u8,
+}
+
+impl User {
+    pub fn new(username: String, password: String, permissions: u8) -> User {
+        User {
+            username,
+            password,
+            permissions,
+        }
+    }
+    pub fn to_string(&self) -> String {
+        format!("User: {} Permissions: {}", self.username, self.permissions)
+    }
 }
 
 #[derive(Debug)]
@@ -110,11 +148,7 @@ impl AuthManager {
 
         self.users.insert(
             username.clone(),
-            User {
-                _username: username.clone(),
-                password: hash,
-                permissions: permission,
-            },
+            User::new(username.clone(), hash, permission),
         );
 
         Ok("OK".to_string())
@@ -156,6 +190,46 @@ impl AuthManager {
         match self.users.get(&username) {
             None => false,
             Some(user) => user.permissions & (permission as u8) != 0,
+        }
+    }
+
+    pub fn get_user(&self, username: String) -> Option<&User> {
+        self.users.get(&username)
+    }
+
+    pub fn grant_permissions(
+        &mut self,
+        username: String,
+        permission: u8,
+    ) -> Result<String, String> {
+        match self.users.get(&username) {
+            None => return Err("User does not exist".to_string()),
+            Some(user) => {
+                let new_permissions = user.permissions | permission;
+                self.users.insert(
+                    username.clone(),
+                    User::new(username.clone(), user.password.clone(), new_permissions),
+                );
+                Ok("OK".to_string())
+            }
+        }
+    }
+
+    pub fn revoke_permission(
+        &mut self,
+        username: String,
+        permission: u8,
+    ) -> Result<String, String> {
+        match self.users.get(&username) {
+            None => return Err("User does not exist".to_string()),
+            Some(user) => {
+                let new_permissions = user.permissions & !permission;
+                self.users.insert(
+                    username.clone(),
+                    User::new(username, user.password.clone(), new_permissions),
+                );
+                Ok("OK".to_string())
+            }
         }
     }
 }

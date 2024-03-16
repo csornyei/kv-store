@@ -6,10 +6,30 @@ use argon2::{
 use regex::Regex;
 use std::collections::HashMap;
 
+// Permissions bit mask:
+// 0b00000001 - SET
+// 0b00000010 - GET
+// 0b00000100 - DEL
+// 0b00001000 - CREATE_USER & DELETE_USER
+// To GRANT permission user needs 0b00001000 & appropriate permission:
+// 0b00001000 | 0b00000001 = 0b00001001
+// 0b00001000 | 0b00000010 = 0b00001010
+// 0b00001000 | 0b00000100 = 0b00001100
+
+#[allow(non_camel_case_types)]
+pub enum Permissions {
+    NONE = 0,
+    SET = 1 << 0,
+    GET = 1 << 1,
+    DEL = 1 << 2,
+    USER_ADMIN = 1 << 3,
+}
+
 #[derive(Debug)]
 struct User {
     _username: String,
     password: String,
+    permissions: u8,
 }
 
 #[derive(Debug)]
@@ -18,12 +38,16 @@ pub struct AuthManager {
 }
 
 impl AuthManager {
-    pub fn new(admin_username: String, admin_password: String) -> Result<AuthManager, String> {
+    pub fn new(
+        admin_username: String,
+        admin_password: String,
+        permission: u8,
+    ) -> Result<AuthManager, String> {
         let mut auth_manager = AuthManager {
             users: HashMap::new(),
         };
 
-        auth_manager.create_user(admin_username, admin_password)?;
+        auth_manager.create_user(admin_username, admin_password, permission)?;
 
         Ok(auth_manager)
     }
@@ -74,7 +98,12 @@ impl AuthManager {
         }
     }
 
-    pub fn create_user(&mut self, username: String, password: String) -> Result<String, String> {
+    pub fn create_user(
+        &mut self,
+        username: String,
+        password: String,
+        permission: u8,
+    ) -> Result<String, String> {
         Self::validate_password(&password)?;
 
         let hash = Self::hash_password(&password).map_err(|e| e.to_string())?;
@@ -84,6 +113,7 @@ impl AuthManager {
             User {
                 _username: username.clone(),
                 password: hash,
+                permissions: permission,
             },
         );
 
@@ -120,5 +150,12 @@ impl AuthManager {
 
     pub fn has_user(&self, username: String) -> bool {
         self.users.contains_key(&username)
+    }
+
+    pub fn check_permission(&self, username: String, permission: Permissions) -> bool {
+        match self.users.get(&username) {
+            None => false,
+            Some(user) => user.permissions & (permission as u8) != 0,
+        }
     }
 }

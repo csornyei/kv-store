@@ -1,7 +1,8 @@
 use crate::commands::{Command, CommandNames};
-use crate::data::auth_manager::AuthManager;
+use crate::data::auth_manager::{AuthManager, Permissions};
 use crate::session::Session;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 #[derive(Debug)]
 pub struct DataManager {
@@ -11,7 +12,7 @@ pub struct DataManager {
 
 impl DataManager {
     pub fn new(admin_username: String, admin_password: String) -> Result<DataManager, String> {
-        let auth_manager = AuthManager::new(admin_username, admin_password)?;
+        let auth_manager = AuthManager::new(admin_username, admin_password, 255)?;
         Ok(DataManager {
             data: HashMap::new(),
             auth_manager,
@@ -25,7 +26,7 @@ impl DataManager {
     ) -> Result<(String, Session), String> {
         match cmd.name {
             CommandNames::SET => {
-                self.check_auth(&session)?;
+                self.check_auth(&session, Permissions::SET)?;
                 let key = cmd.args[0].clone();
                 let value = cmd.args[1].clone();
                 let result = self.set(key, value);
@@ -35,7 +36,7 @@ impl DataManager {
                 }
             }
             CommandNames::GET => {
-                self.check_auth(&session)?;
+                self.check_auth(&session, Permissions::GET)?;
                 let key = cmd.args[0].clone();
                 let result = self.get(key);
                 match result {
@@ -44,7 +45,7 @@ impl DataManager {
                 }
             }
             CommandNames::DEL => {
-                self.check_auth(&session)?;
+                self.check_auth(&session, Permissions::DEL)?;
                 let key = cmd.args[0].clone();
                 let result = self.del(key);
                 match result {
@@ -62,17 +63,22 @@ impl DataManager {
                 }
             }
             CommandNames::CREATE_USER => {
-                self.check_auth(&session)?;
+                self.check_auth(&session, Permissions::USER_ADMIN)?;
                 let user_name = cmd.args[0].clone();
                 let password = cmd.args[1].clone();
-                let result = self.create_user(user_name, password);
+                let permissions_arg = cmd.args[2].clone();
+                println!("permissions_arg: {}", permissions_arg);
+                let permissions = u8::from_str(&permissions_arg).unwrap();
+                println!("permissions: {}", permissions);
+
+                let result = self.create_user(user_name, password, permissions);
                 match result {
                     Ok(_) => Ok(("OK".to_string(), session)),
                     Err(e) => Err(e),
                 }
             }
             CommandNames::DELETE_USER => {
-                self.check_auth(&session)?;
+                self.check_auth(&session, Permissions::USER_ADMIN)?;
                 let user_name = cmd.args[0].clone();
                 let result = self.delete_user(user_name);
                 match result {
@@ -80,15 +86,30 @@ impl DataManager {
                     Err(e) => Err(e),
                 }
             }
+            CommandNames::GRANT => {
+                self.check_auth(&session, Permissions::USER_ADMIN)?;
+                // also check for other permissions here!
+                Ok(("OK".to_string(), session))
+            }
+            CommandNames::REVOKE => {
+                self.check_auth(&session, Permissions::USER_ADMIN)?;
+                Ok(("OK".to_string(), session))
+            }
         }
     }
 
-    fn check_auth(&self, session: &Session) -> Result<(), String> {
+    fn check_auth(&self, session: &Session, permission: Permissions) -> Result<(), String> {
         if !session.is_authenticated {
             return Err("User not authenticated".to_string());
         }
         if !self.auth_manager.has_user(session.username.clone()) {
             return Err("User not authenticated".to_string());
+        }
+        if !self
+            .auth_manager
+            .check_permission(session.username.clone(), permission)
+        {
+            return Err("User does not have permission".to_string());
         }
         Ok(())
     }
@@ -116,8 +137,14 @@ impl DataManager {
         self.auth_manager.login_user(_user_name, password)
     }
 
-    fn create_user(&mut self, user_name: String, password: String) -> Result<String, String> {
-        self.auth_manager.create_user(user_name, password)
+    fn create_user(
+        &mut self,
+        user_name: String,
+        password: String,
+        permissions: u8,
+    ) -> Result<String, String> {
+        self.auth_manager
+            .create_user(user_name, password, permissions)
     }
 
     fn delete_user(&mut self, user_name: String) -> Result<String, String> {
@@ -179,7 +206,7 @@ mod data_manager_tests {
         assert_eq!(session, "Username or password is incorrect".to_string());
 
         assert_eq!(
-            data.create_user("user".to_string(), "Password4".to_string()),
+            data.create_user("user".to_string(), "Password4".to_string(), 255),
             Ok("OK".to_string())
         );
 
@@ -194,7 +221,7 @@ mod data_manager_tests {
     fn test_create_user() {
         let mut data = create_data_manager();
         assert_eq!(
-            data.create_user("user".to_string(), "Password4".to_string()),
+            data.create_user("user".to_string(), "Password4".to_string(), 255),
             Ok("OK".to_string())
         );
 
@@ -209,7 +236,7 @@ mod data_manager_tests {
     fn test_delete_user() {
         let mut data = create_data_manager();
         assert_eq!(
-            data.create_user("user".to_string(), "Password4".to_string()),
+            data.create_user("user".to_string(), "Password4".to_string(), 255),
             Ok("OK".to_string())
         );
 
@@ -350,7 +377,7 @@ mod data_manager_tests {
     fn test_check_auth() {
         let mut data = create_data_manager();
         let session = Session::new();
-        let result = data.check_auth(&session).unwrap_err();
+        let result = data.check_auth(&session, Permissions::NONE).unwrap_err();
         assert_eq!(result, "User not authenticated".to_string());
 
         // Test all commands that require authentication
@@ -380,7 +407,7 @@ mod data_manager_tests {
         let mut data = create_data_manager();
         let admin_session = create_session();
 
-        let cmd = Command::from_str("CREATE_USER user Password4").unwrap();
+        let cmd = Command::from_str("CREATE_USER user Password4 255").unwrap();
         let (result, _) = data.handle_command(cmd, admin_session.clone()).unwrap();
         assert_eq!(result, "OK".to_string());
 
@@ -407,5 +434,23 @@ mod data_manager_tests {
         let cmd = Command::from_str("GET key").unwrap();
         let (result, _) = data.handle_command(cmd, admin_session.clone()).unwrap();
         assert_eq!(result, "value".to_string());
+    }
+
+    #[test]
+    fn test_check_auth_no_permission() {
+        let mut data = create_data_manager();
+        let admin_session = create_session();
+
+        let cmd = Command::from_str("CREATE_USER user Password4 0").unwrap();
+        let (result, _) = data.handle_command(cmd, admin_session.clone()).unwrap();
+        assert_eq!(result, "OK".to_string());
+
+        let cmd = Command::from_str("AUTH user Password4").unwrap();
+        let (result, user_session) = data.handle_command(cmd, Session::new()).unwrap();
+        assert_eq!(result, "OK".to_string());
+
+        let cmd = Command::from_str("SET key value").unwrap();
+        let result = data.handle_command(cmd, user_session.clone()).unwrap_err();
+        assert_eq!(result, "User does not have permission".to_string());
     }
 }

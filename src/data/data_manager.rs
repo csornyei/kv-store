@@ -75,8 +75,12 @@ impl DataManager {
                 self.check_auth(&session, Permissions::USER_ADMIN)?;
                 let user_name = cmd.args[0].clone();
                 let password = cmd.args[1].clone();
-                let permissions_arg = cmd.args[2].clone();
-                let permissions = u8::from_str(&permissions_arg).unwrap();
+                let permissions = u8::from_str(&cmd.args[2]).unwrap();
+
+                let permissions_to_set = Permissions::from_u8(permissions.clone());
+                for p in permissions_to_set {
+                    self.check_permission(&session, p)?;
+                }
 
                 let result = self.create_user(user_name, password, permissions);
                 match result {
@@ -98,8 +102,14 @@ impl DataManager {
                 // also check for other permissions here!
 
                 let username = cmd.args[0].clone();
-                let permission = u8::from_str(&cmd.args[1]).unwrap();
-                self.auth_manager.grant_permissions(username, permission)?;
+                let permissions = u8::from_str(&cmd.args[1]).unwrap();
+
+                let permissions_to_set = Permissions::from_u8(permissions.clone());
+                for p in permissions_to_set {
+                    self.check_permission(&session, p)?;
+                }
+
+                self.auth_manager.grant_permissions(username, permissions)?;
 
                 Ok(("OK".to_string(), session))
             }
@@ -108,11 +118,27 @@ impl DataManager {
 
                 let username = cmd.args[0].clone();
                 let permission = u8::from_str(&cmd.args[1]).unwrap();
+
+                let permissions_to_revoke = Permissions::from_u8(permission.clone());
+                for p in permissions_to_revoke {
+                    self.check_permission(&session, p)?;
+                }
+
                 self.auth_manager.revoke_permission(username, permission)?;
 
                 Ok(("OK".to_string(), session))
             }
         }
+    }
+
+    fn check_permission(&self, session: &Session, permission: Permissions) -> Result<(), String> {
+        if !self
+            .auth_manager
+            .check_permission(session.username.clone(), permission)
+        {
+            return Err("User does not have permission".to_string());
+        }
+        Ok(())
     }
 
     fn check_auth(&self, session: &Session, permission: Permissions) -> Result<(), String> {
@@ -122,12 +148,7 @@ impl DataManager {
         if !self.auth_manager.has_user(session.username.clone()) {
             return Err("User not authenticated".to_string());
         }
-        if !self
-            .auth_manager
-            .check_permission(session.username.clone(), permission)
-        {
-            return Err("User does not have permission".to_string());
-        }
+        self.check_permission(session, permission)?;
         Ok(())
     }
 

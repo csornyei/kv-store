@@ -8,9 +8,10 @@ use crate::session::Session;
 use std::collections::HashMap;
 use std::str::FromStr;
 
-#[derive(Debug)]
+use super::data_value::Data;
+
 pub struct DataManager {
-    data: HashMap<String, DataValue>,
+    data: HashMap<String, Box<dyn Data + Send + Sync>>,
     auth_manager: AuthManager,
 }
 
@@ -170,13 +171,17 @@ impl DataManager {
     }
 
     fn set(&mut self, key: String, value: String, data_type: DataTypes) -> Result<String, String> {
-        self.data.insert(key, DataValue::new(value, data_type)?);
+        let data_value = DataValue::new(value, data_type)?;
+        self.data.insert(key, Box::new(data_value));
         Ok("OK".to_string())
     }
 
     fn get(&self, key: String) -> Result<String, String> {
         match self.data.get(&key) {
-            Some(value) => Ok(value.value.clone()),
+            Some(value) => {
+                let value = value.get(key.to_string()).unwrap();
+                Ok(value)
+            }
             None => Err("Key not found".to_string()),
         }
     }

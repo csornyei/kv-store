@@ -1,6 +1,6 @@
 use std::{fmt::Display, str::FromStr};
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum DataTypes {
     STRING,
     INT,

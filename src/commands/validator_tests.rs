@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use super::parser::Command;
+use super::commands::Command;
 use super::CommandNames;
 
 #[test]

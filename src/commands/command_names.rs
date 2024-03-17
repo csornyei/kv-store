@@ -54,3 +54,16 @@ impl FromStr for CommandNames {
         }
     }
 }
+
+#[cfg(test)]
+mod command_names_tests {
+    use super::*;
+
+    #[test]
+    fn test_string_to_commands() {
+        assert_eq!(CommandNames::from_str("SET").unwrap(), CommandNames::SET);
+        assert_eq!(CommandNames::from_str("GET").unwrap(), CommandNames::GET);
+        assert_eq!(CommandNames::from_str("DEL").unwrap(), CommandNames::DEL);
+        assert!(CommandNames::from_str("INVALID").is_err());
+    }
+}

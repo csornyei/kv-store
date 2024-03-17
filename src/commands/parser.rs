@@ -1,121 +1,48 @@
 use std::io::{Error, ErrorKind};
 use std::str::FromStr;
 
-use super::validator::validate_args;
 use super::CommandNames;
-use crate::data::DataTypes;
 
-pub struct Command {
-    pub name: CommandNames,
-    pub args: Vec<String>,
-}
-
-impl Command {
-    fn new(name: CommandNames, args: Vec<String>) -> Command {
-        match name {
-            CommandNames::CREATE_USER => {
-                return Command::new_create_user_command(name, args);
-            }
-            CommandNames::GRANT | CommandNames::REVOKE => {
-                return Command::new_auth_command(name, args);
-            }
-            CommandNames::SET => {
-                return Command::new_set_command(name, args);
-            }
-            _ => Command { name, args },
-        }
-    }
-
-    fn new_create_user_command(name: CommandNames, args: Vec<String>) -> Command {
-        let password = args[1].clone();
-        let other_args = args[2..].join(" ");
-
-        let permissions = Command::parse_permissions(&other_args);
-
-        let args = vec![args[0].clone(), password, permissions.to_string()];
-
-        Command { name, args }
-    }
-
-    fn new_auth_command(name: CommandNames, args: Vec<String>) -> Command {
-        let other_args = args[1..].join(" ");
-
-        let permissions = Command::parse_permissions(&other_args);
-
-        let args = vec![args[0].clone(), permissions.to_string()];
-
-        Command { name, args }
-    }
-
-    fn new_set_command(name: CommandNames, args: Vec<String>) -> Command {
-        let key = args[0].clone();
-
-        let value = args[1].clone();
-
-        let data_type = if args.len() == 2 {
-            DataTypes::STRING
-        } else {
-            DataTypes::from_str(&args[2]).unwrap()
-        };
-
-        Command {
-            name,
-            args: vec![key, value, data_type.to_string()],
-        }
-    }
-
-    fn parse_permissions(args: &str) -> u8 {
-        let mut permissions = 0;
-        for permission in args.split(' ') {
-            match Command::parse_permission_num(permission) {
-                Ok(perm) => return perm,
-                Err(_) => {
-                    let parsed_permissions =
-                        Command::parse_permissions_str(permissions, permission);
-                    match parsed_permissions {
-                        Ok(perm) => {
-                            permissions = perm;
-                        }
-                        Err(_) => {
-                            break;
-                        }
+pub fn parse_permissions(args: &str) -> u8 {
+    let mut permissions = 0;
+    for permission in args.split(' ') {
+        match parse_permission_num(permission) {
+            Ok(perm) => return perm,
+            Err(_) => {
+                let parsed_permissions = parse_permissions_str(permissions, permission);
+                match parsed_permissions {
+                    Ok(perm) => {
+                        permissions = perm;
+                    }
+                    Err(_) => {
+                        break;
                     }
                 }
             }
         }
-        permissions
     }
+    permissions
+}
 
-    fn parse_permission_num(permissions: &str) -> Result<u8, Error> {
-        match permissions.parse::<u8>() {
-            Ok(perm) => Ok(perm),
-            Err(_) => Err(Error::new(ErrorKind::InvalidInput, "Invalid permission")),
-        }
-    }
-
-    fn parse_permissions_str(current_permissions: u8, permission: &str) -> Result<u8, Error> {
-        match permission {
-            "SET" => Ok(current_permissions | 1 << 0),
-            "GET" => Ok(current_permissions | 1 << 1),
-            "DEL" => Ok(current_permissions | 1 << 2),
-            "USER_ADMIN" => Ok(current_permissions | 1 << 3),
-
-            _ => return Err(Error::new(ErrorKind::InvalidInput, "Invalid permission")),
-        }
+fn parse_permission_num(permissions: &str) -> Result<u8, Error> {
+    match permissions.parse::<u8>() {
+        Ok(perm) => Ok(perm),
+        Err(_) => Err(Error::new(ErrorKind::InvalidInput, "Invalid permission")),
     }
 }
 
-impl FromStr for Command {
-    type Err = Error;
+fn parse_permissions_str(current_permissions: u8, permission: &str) -> Result<u8, Error> {
+    match permission {
+        "SET" => Ok(current_permissions | 1 << 0),
+        "GET" => Ok(current_permissions | 1 << 1),
+        "DEL" => Ok(current_permissions | 1 << 2),
+        "USER_ADMIN" => Ok(current_permissions | 1 << 3),
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (name, args) = parse_line(s.to_string())?;
-        validate_args(&name, args.clone())?;
-        Ok(Command::new(name, args))
+        _ => return Err(Error::new(ErrorKind::InvalidInput, "Invalid permission")),
     }
 }
 
-fn parse_line(line: String) -> Result<(CommandNames, Vec<String>), Error> {
+pub fn parse_line(line: String) -> Result<(CommandNames, Vec<String>), Error> {
     let parts: Vec<&str> = line.trim().splitn(2, ' ').collect();
     if parts.len() < 1 {
         return Err(Error::new(ErrorKind::InvalidInput, "No command"));
@@ -135,14 +62,6 @@ fn parse_line(line: String) -> Result<(CommandNames, Vec<String>), Error> {
 #[cfg(test)]
 mod parser_tests {
     use super::*;
-
-    #[test]
-    fn test_string_to_commands() {
-        assert_eq!(CommandNames::from_str("SET").unwrap(), CommandNames::SET);
-        assert_eq!(CommandNames::from_str("GET").unwrap(), CommandNames::GET);
-        assert_eq!(CommandNames::from_str("DEL").unwrap(), CommandNames::DEL);
-        assert!(CommandNames::from_str("INVALID").is_err());
-    }
 
     #[test]
     fn test_parse_line_no_string() {
@@ -169,33 +88,27 @@ mod parser_tests {
     }
 
     #[test]
-    fn test_command_from_str() {
-        assert!(Command::from_str("SET key value").is_ok());
-        assert!(Command::from_str("SET key").is_err());
-    }
-
-    #[test]
     fn test_parse_permissions() {
-        let permissions = Command::parse_permissions("");
+        let permissions = parse_permissions("");
         assert_eq!(permissions, 0);
 
-        let permissions = Command::parse_permissions("SET");
+        let permissions = parse_permissions("SET");
         assert_eq!(permissions, 1);
 
-        let permissions = Command::parse_permissions("SET GET");
+        let permissions = parse_permissions("SET GET");
         assert_eq!(permissions, 3);
 
-        let permissions = Command::parse_permissions("SET GET DEL");
+        let permissions = parse_permissions("SET GET DEL");
 
         assert_eq!(permissions, 7);
 
-        let permissions = Command::parse_permissions("SET GET DEL USER_ADMIN");
+        let permissions = parse_permissions("SET GET DEL USER_ADMIN");
         assert_eq!(permissions, 15);
 
-        let permissions = Command::parse_permissions("SET GET DEL USER_ADMIN INVALID");
+        let permissions = parse_permissions("SET GET DEL USER_ADMIN INVALID");
         assert_eq!(permissions, 15);
 
-        let permissions = Command::parse_permissions("255");
+        let permissions = parse_permissions("255");
         assert_eq!(permissions, 255);
     }
 }

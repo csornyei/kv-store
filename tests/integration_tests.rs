@@ -32,7 +32,7 @@ async fn send_command(mut client: TcpStream, command: &str) -> (TcpStream, Strin
 }
 
 #[tokio::test]
-async fn test_simple_key_value_flow() {
+async fn test_integration_simple_key_value_flow() {
     const PORT: u16 = 65500;
 
     let server_handle = start_test_server(PORT).await;
@@ -43,26 +43,26 @@ async fn test_simple_key_value_flow() {
         .await
         .unwrap();
 
-    let (client, response) = send_command(client, "AUTH admin Password4\n").await;
-    assert_eq!(response, "OK\n");
+    let (client, response) = send_command(client, "AUTH admin Password4;").await;
+    assert_eq!(response, "OK;");
 
-    let (client, response) = send_command(client, "SET key value\n").await;
-    assert_eq!(response, "OK\n");
+    let (client, response) = send_command(client, "SET key value;").await;
+    assert_eq!(response, "OK;");
 
-    let (client, response) = send_command(client, "GET key\n").await;
-    assert_eq!(response, "value\n");
+    let (client, response) = send_command(client, "GET key;").await;
+    assert_eq!(response, "value;");
 
-    let (client, response) = send_command(client, "DEL key\n").await;
-    assert_eq!(response, "OK\n");
+    let (client, response) = send_command(client, "DEL key;").await;
+    assert_eq!(response, "OK;");
 
-    let (_, response) = send_command(client, "GET key\n").await;
-    assert_eq!(response, "Key not found\n");
+    let (_, response) = send_command(client, "GET key;").await;
+    assert_eq!(response, "Key not found;");
 
     server_handle.abort();
 }
 
 #[tokio::test]
-async fn test_two_clients() {
+async fn test_integration_two_clients() {
     const PORT: u16 = 65501;
     let server_handle = start_test_server(PORT).await;
 
@@ -72,42 +72,42 @@ async fn test_two_clients() {
         .await
         .unwrap();
 
-    let (first_client, response) = send_command(first_client, "AUTH admin Password4\n").await;
-    assert_eq!("OK\n", response);
+    let (first_client, response) = send_command(first_client, "AUTH admin Password4;").await;
+    assert_eq!("OK;", response);
 
     let second_client = TcpStream::connect(format!("{}:{}", ADDRESS, PORT))
         .await
         .unwrap();
 
-    let (second_client, response) = send_command(second_client, "AUTH admin Password4\n").await;
-    assert_eq!(response, "OK\n");
+    let (second_client, response) = send_command(second_client, "AUTH admin Password4;").await;
+    assert_eq!(response, "OK;");
 
-    let (first_client, response) = send_command(first_client, "SET key value\n").await;
-    assert_eq!(response, "OK\n");
+    let (first_client, response) = send_command(first_client, "SET key value;").await;
+    assert_eq!(response, "OK;");
 
-    let (second_client, response) = send_command(second_client, "GET key\n").await;
-    assert_eq!(response, "value\n");
+    let (second_client, response) = send_command(second_client, "GET key;").await;
+    assert_eq!(response, "value;");
 
-    let (second_client, response) = send_command(second_client, "SET key value2\n").await;
-    assert_eq!(response, "OK\n");
+    let (second_client, response) = send_command(second_client, "SET key value2;").await;
+    assert_eq!(response, "OK;");
 
-    let (first_client, response) = send_command(first_client, "GET key\n").await;
-    assert_eq!(response, "value2\n");
+    let (first_client, response) = send_command(first_client, "GET key;").await;
+    assert_eq!(response, "value2;");
 
-    let (first_client, response) = send_command(first_client, "DEL key\n").await;
-    assert_eq!(response, "OK\n");
+    let (first_client, response) = send_command(first_client, "DEL key;").await;
+    assert_eq!(response, "OK;");
 
-    let (_, response) = send_command(first_client, "GET key\n").await;
-    assert_eq!(response, "Key not found\n");
+    let (_, response) = send_command(first_client, "GET key;").await;
+    assert_eq!(response, "Key not found;");
 
-    let (_, response) = send_command(second_client, "GET key\n").await;
-    assert_eq!(response, "Key not found\n");
+    let (_, response) = send_command(second_client, "GET key;").await;
+    assert_eq!(response, "Key not found;");
 
     server_handle.abort();
 }
 
 #[tokio::test]
-async fn test_lot_clients() {
+async fn test_integration_lot_clients() {
     const PORT: u16 = 65502;
     let server_handle = start_test_server(PORT).await;
 
@@ -121,24 +121,24 @@ async fn test_lot_clients() {
             .unwrap();
 
         let handle = tokio::spawn(async move {
-            let (client, response) = send_command(client, "AUTH admin Password4\n").await;
-            assert_eq!(response, "OK\n");
+            let (client, response) = send_command(client, "AUTH admin Password4;").await;
+            assert_eq!(response, "OK;");
 
-            let (client, response) = send_command(client, &format!("SET key{} value\n", i)).await;
-            assert_eq!(response, "OK\n", "SET command response mismatch");
+            let (client, response) = send_command(client, &format!("SET key{} value;", i)).await;
+            assert_eq!(response, "OK;", "SET command response mismatch");
 
-            let (client, response) = send_command(client, &format!("GET key{}\n", i)).await;
+            let (client, response) = send_command(client, &format!("GET key{};", i)).await;
             assert_eq!(
-                response, "value\n",
+                response, "value;",
                 "GET command (after SET) response mismatch"
             );
 
-            let (client, response) = send_command(client, &format!("DEL key{}\n", i)).await;
-            assert_eq!(response, "OK\n", "DEL command response mismatch");
+            let (client, response) = send_command(client, &format!("DEL key{};", i)).await;
+            assert_eq!(response, "OK;", "DEL command response mismatch");
 
-            let (_, response) = send_command(client, &format!("GET key{}\n", i)).await;
+            let (_, response) = send_command(client, &format!("GET key{};", i)).await;
             assert_eq!(
-                response, "Key not found\n",
+                response, "Key not found;",
                 "GET command (after DEL) response mismatch"
             );
         });
@@ -155,4 +155,85 @@ async fn test_lot_clients() {
     }
 
     server_handle.abort();
+}
+
+#[tokio::test]
+async fn test_integration_batch_commands() {
+    const PORT: u16 = 65503;
+
+    let _ = start_test_server(PORT).await;
+
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+
+    let client = TcpStream::connect(format!("{}:{}", ADDRESS, PORT))
+        .await
+        .unwrap();
+
+    let (client, response) = send_command(client, "AUTH admin Password4;").await;
+    assert_eq!(response, "OK;");
+
+    let (client, response) =
+        send_command(client, "SET key1 value1;SET key2 value2;SET key3 value3;").await;
+    assert_eq!(response, "OK;OK;OK;");
+
+    let (_, response) = send_command(client, "GET key1;GET key2;GET key3;").await;
+    assert_eq!(response, "value1;value2;value3;");
+}
+
+#[tokio::test]
+async fn test_integration_incomplete_command() {
+    const PORT: u16 = 65505;
+
+    let _ = start_test_server(PORT).await;
+
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+
+    let client = TcpStream::connect(format!("{}:{}", ADDRESS, PORT))
+        .await
+        .unwrap();
+
+    let (client, response) = send_command(client, "AUTH admin Password4;").await;
+    assert_eq!(response, "OK;");
+
+    let (client, response) = send_command(client, "SET key value").await;
+    assert_eq!(response, " ");
+
+    let (client, response) = send_command(client, ";").await;
+    assert_eq!(response, "OK;");
+
+    let (client, response) = send_command(client, "GET key;").await;
+    assert_eq!(response, "value;");
+
+    let (client, response) = send_command(client, "SET ").await;
+    assert_eq!(response, " ");
+
+    let (_, response) = send_command(client, "key1 value1; SET key2 value2;").await;
+    assert_eq!(response, "OK;OK;");
+}
+
+#[tokio::test]
+async fn test_integration_long_batch_commands() {
+    const PORT: u16 = 65504;
+
+    let _ = start_test_server(PORT).await;
+
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+
+    let client = TcpStream::connect(format!("{}:{}", ADDRESS, PORT))
+        .await
+        .unwrap();
+
+    let (client, response) = send_command(client, "AUTH admin Password4;").await;
+    assert_eq!(response, "OK;");
+
+    let commands = (0..1000)
+        .map(|i| format!("SET key value{};", i))
+        .collect::<String>();
+
+    let (client, response) = send_command(client, &format!("{};", commands)).await;
+    assert_eq!(response, "OK;".to_string().repeat(1000));
+
+    let (_, response) = send_command(client, "GET key;").await;
+
+    assert_eq!(response, "value999;");
 }

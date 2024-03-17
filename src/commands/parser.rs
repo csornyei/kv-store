@@ -50,7 +50,7 @@ impl FromStr for CommandNames {
             "DELETE_USER" => Ok(CommandNames::DELETE_USER),
             "GRANT" => Ok(CommandNames::GRANT),
             "REVOKE" => Ok(CommandNames::REVOKE),
-            _ => Err(Error::new(ErrorKind::InvalidInput, "Invalid command")),
+            _ => Err(Error::new(ErrorKind::InvalidInput, "Invalid command;")),
         }
     }
 }

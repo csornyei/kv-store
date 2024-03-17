@@ -1,61 +1,9 @@
-use std::fmt::{self, Display, Formatter};
 use std::io::{Error, ErrorKind};
 use std::str::FromStr;
 
+use super::validator::validate_args;
+use super::CommandNames;
 use crate::data::DataTypes;
-
-#[allow(non_camel_case_types)]
-#[derive(Debug, PartialEq)]
-pub enum CommandNames {
-    SET,
-    GET,
-    DEL,
-
-    // Authentication commands
-    AUTH,
-    GET_USER,
-    CREATE_USER,
-    DELETE_USER,
-
-    // Authorization commands
-    GRANT,
-    REVOKE,
-}
-
-impl Display for CommandNames {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            CommandNames::SET => write!(f, "SET"),
-            CommandNames::GET => write!(f, "GET"),
-            CommandNames::DEL => write!(f, "DEL"),
-            CommandNames::AUTH => write!(f, "AUTH"),
-            CommandNames::GET_USER => write!(f, "GET_USER"),
-            CommandNames::CREATE_USER => write!(f, "CREATE_USER"),
-            CommandNames::DELETE_USER => write!(f, "DELETE_USER"),
-            CommandNames::GRANT => write!(f, "GRANT"),
-            CommandNames::REVOKE => write!(f, "REVOKE"),
-        }
-    }
-}
-
-impl FromStr for CommandNames {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "SET" => Ok(CommandNames::SET),
-            "GET" => Ok(CommandNames::GET),
-            "DEL" => Ok(CommandNames::DEL),
-            "AUTH" => Ok(CommandNames::AUTH),
-            "GET_USER" => Ok(CommandNames::GET_USER),
-            "CREATE_USER" => Ok(CommandNames::CREATE_USER),
-            "DELETE_USER" => Ok(CommandNames::DELETE_USER),
-            "GRANT" => Ok(CommandNames::GRANT),
-            "REVOKE" => Ok(CommandNames::REVOKE),
-            _ => Err(Error::new(ErrorKind::InvalidInput, "Invalid command;")),
-        }
-    }
-}
 
 pub struct Command {
     pub name: CommandNames,
@@ -116,102 +64,6 @@ impl Command {
         }
     }
 
-    fn validate_args(command: &CommandNames, args: Vec<String>) -> Result<(), Error> {
-        match command {
-            CommandNames::SET => {
-                if args.len() < 2 {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        "Invalid number of arguments",
-                    ));
-                }
-                if args.len() >= 3 {
-                    match DataTypes::from_str(&args[2]) {
-                        Ok(data_type) => {
-                            if data_type == DataTypes::STORE {
-                                return Err(Error::new(
-                                    ErrorKind::InvalidInput,
-                                    "Invalid data type. To create STORE use CREATE_STORE command",
-                                ));
-                            }
-                            match data_type.validate_data(&args[1]) {
-                                Ok(_) => {}
-                                Err(e) => return Err(Error::new(ErrorKind::InvalidInput, e)),
-                            }
-                        }
-                        Err(e) => return Err(Error::new(ErrorKind::InvalidInput, e)),
-                    };
-                }
-                return Ok(());
-            }
-            CommandNames::GET => {
-                if args.len() != 1 {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        "Invalid number of arguments",
-                    ));
-                }
-            }
-            CommandNames::DEL => {
-                if args.len() != 1 {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        "Invalid number of arguments",
-                    ));
-                }
-            }
-            CommandNames::AUTH => {
-                if args.len() != 2 {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        "Invalid number of arguments",
-                    ));
-                }
-            }
-            CommandNames::GET_USER => {
-                if args.len() != 1 {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        "Invalid number of arguments",
-                    ));
-                }
-            }
-            CommandNames::CREATE_USER => {
-                if args.len() < 2 {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        "Invalid number of arguments",
-                    ));
-                }
-            }
-            CommandNames::DELETE_USER => {
-                if args.len() != 1 {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        "Invalid number of arguments",
-                    ));
-                }
-            }
-            CommandNames::GRANT => {
-                if args.len() < 2 {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        "Invalid number of arguments",
-                    ));
-                }
-            }
-            CommandNames::REVOKE => {
-                if args.len() < 2 {
-                    return Err(Error::new(
-                        ErrorKind::InvalidInput,
-                        "Invalid number of arguments",
-                    ));
-                }
-            }
-        }
-        Ok(())
-    }
-
     fn parse_permissions(args: &str) -> u8 {
         let mut permissions = 0;
         for permission in args.split(' ') {
@@ -258,7 +110,7 @@ impl FromStr for Command {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (name, args) = parse_line(s.to_string())?;
-        Command::validate_args(&name, args.clone())?;
+        validate_args(&name, args.clone())?;
         Ok(Command::new(name, args))
     }
 }

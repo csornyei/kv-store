@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
-use super::parser::{Command, CommandNames};
+use super::parser::Command;
+use super::CommandNames;
 
 #[test]
 fn test_validate_set_args() {

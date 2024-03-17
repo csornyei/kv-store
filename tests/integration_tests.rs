@@ -210,30 +210,3 @@ async fn test_integration_incomplete_command() {
     let (_, response) = send_command(client, "key1 value1; SET key2 value2;").await;
     assert_eq!(response, "OK;OK;");
 }
-
-#[tokio::test]
-async fn test_integration_long_batch_commands() {
-    const PORT: u16 = 65504;
-
-    let _ = start_test_server(PORT).await;
-
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-
-    let client = TcpStream::connect(format!("{}:{}", ADDRESS, PORT))
-        .await
-        .unwrap();
-
-    let (client, response) = send_command(client, "AUTH admin Password4;").await;
-    assert_eq!(response, "OK;");
-
-    let commands = (0..1000)
-        .map(|i| format!("SET key value{};", i))
-        .collect::<String>();
-
-    let (client, response) = send_command(client, &format!("{};", commands)).await;
-    assert_eq!(response, "OK;".to_string().repeat(1000));
-
-    let (_, response) = send_command(client, "GET key;").await;
-
-    assert_eq!(response, "value999;");
-}

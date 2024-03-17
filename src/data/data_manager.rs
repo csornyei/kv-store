@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::str::FromStr;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum DataTypes {
     STRING,
     INT,
@@ -63,8 +63,24 @@ impl DataTypes {
 }
 
 #[derive(Debug)]
+pub struct DataValue {
+    value: String,
+    _data_type: DataTypes,
+}
+
+impl DataValue {
+    pub fn new(value: String, data_type: DataTypes) -> Result<DataValue, String> {
+        data_type.validate_data(&value)?;
+        Ok(DataValue {
+            value,
+            _data_type: data_type,
+        })
+    }
+}
+
+#[derive(Debug)]
 pub struct DataManager {
-    data: HashMap<String, String>,
+    data: HashMap<String, DataValue>,
     auth_manager: AuthManager,
 }
 
@@ -87,7 +103,8 @@ impl DataManager {
                 self.check_auth(&session, Permissions::SET)?;
                 let key = cmd.args[0].clone();
                 let value = cmd.args[1].clone();
-                let result = self.set(key, value);
+                let data_type = DataTypes::from_str(&cmd.args[2])?;
+                let result = self.set(key, value, data_type);
                 match result {
                     Ok(_) => Ok(("OK".to_string(), session)),
                     Err(e) => Err(e),
@@ -210,14 +227,14 @@ impl DataManager {
         Ok(())
     }
 
-    fn set(&mut self, key: String, value: String) -> Result<String, String> {
-        self.data.insert(key, value);
+    fn set(&mut self, key: String, value: String, data_type: DataTypes) -> Result<String, String> {
+        self.data.insert(key, DataValue::new(value, data_type)?);
         Ok("OK".to_string())
     }
 
     fn get(&self, key: String) -> Result<String, String> {
         match self.data.get(&key) {
-            Some(value) => Ok(value.clone()),
+            Some(value) => Ok(value.value.clone()),
             None => Err("Key not found".to_string()),
         }
     }

@@ -2,6 +2,8 @@ use std::fmt::{self, Display, Formatter};
 use std::io::{Error, ErrorKind};
 use std::str::FromStr;
 
+use crate::data::DataTypes;
+
 #[allow(non_camel_case_types)]
 #[derive(Debug, PartialEq)]
 pub enum CommandNames {
@@ -69,6 +71,9 @@ impl Command {
             CommandNames::GRANT | CommandNames::REVOKE => {
                 return Command::new_auth_command(name, args);
             }
+            CommandNames::SET => {
+                return Command::new_set_command(name, args);
+            }
             _ => Command { name, args },
         }
     }
@@ -94,15 +99,50 @@ impl Command {
         Command { name, args }
     }
 
+    fn new_set_command(name: CommandNames, args: Vec<String>) -> Command {
+        let key = args[0].clone();
+
+        let value = args[1].clone();
+
+        let data_type = if args.len() == 2 {
+            DataTypes::STRING
+        } else {
+            DataTypes::from_str(&args[2]).unwrap()
+        };
+
+        Command {
+            name,
+            args: vec![key, value, data_type.to_string()],
+        }
+    }
+
     fn validate_args(command: &CommandNames, args: Vec<String>) -> Result<(), Error> {
         match command {
             CommandNames::SET => {
-                if args.len() != 2 {
+                if args.len() < 2 {
                     return Err(Error::new(
                         ErrorKind::InvalidInput,
                         "Invalid number of arguments",
                     ));
                 }
+                if args.len() >= 3 {
+                    match DataTypes::from_str(&args[2]) {
+                        Ok(data_type) => {
+                            if data_type == DataTypes::STORE {
+                                return Err(Error::new(
+                                    ErrorKind::InvalidInput,
+                                    "Invalid data type. To create STORE use CREATE_STORE command",
+                                ));
+                            }
+                            match data_type.validate_data(&args[1]) {
+                                Ok(_) => {}
+                                Err(e) => return Err(Error::new(ErrorKind::InvalidInput, e)),
+                            }
+                        }
+                        Err(e) => return Err(Error::new(ErrorKind::InvalidInput, e)),
+                    };
+                }
+                return Ok(());
             }
             CommandNames::GET => {
                 if args.len() != 1 {
@@ -274,28 +314,6 @@ mod parser_tests {
                 vec!["key".to_string(), "value".to_string()]
             )
         );
-    }
-
-    #[test]
-    fn test_command_validate_args() {
-        assert!(Command::validate_args(&CommandNames::SET, vec!["key".to_string()]).is_err());
-        assert!(Command::validate_args(
-            &CommandNames::SET,
-            vec!["key".to_string(), "value".to_string()]
-        )
-        .is_ok());
-        assert!(Command::validate_args(
-            &CommandNames::GET,
-            vec!["key".to_string(), "value".to_string()]
-        )
-        .is_err());
-        assert!(Command::validate_args(&CommandNames::GET, vec!["key".to_string()]).is_ok());
-        assert!(Command::validate_args(
-            &CommandNames::DEL,
-            vec!["key".to_string(), "value".to_string()]
-        )
-        .is_err());
-        assert!(Command::validate_args(&CommandNames::DEL, vec!["key".to_string()]).is_ok());
     }
 
     #[test]

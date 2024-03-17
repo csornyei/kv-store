@@ -56,7 +56,7 @@ impl DataManager {
             CommandNames::AUTH => {
                 let user_name = cmd.args[0].clone();
                 let password = cmd.args[1].clone();
-                let result = self.auth(user_name, password);
+                let result = self.auth(user_name, password, session.clone());
                 match result {
                     Ok(session) => Ok(("OK".to_string(), session)),
                     Err(e) => Err(e),
@@ -171,8 +171,13 @@ impl DataManager {
         }
     }
 
-    fn auth(&self, _user_name: String, password: String) -> Result<Session, String> {
-        self.auth_manager.login_user(_user_name, password)
+    fn auth(
+        &self,
+        user_name: String,
+        password: String,
+        session: Session,
+    ) -> Result<Session, String> {
+        self.auth_manager.login_user(user_name, password, session)
     }
 
     fn create_user(

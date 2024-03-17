@@ -164,17 +164,19 @@ impl AuthManager {
         }
     }
 
-    pub fn login_user(&self, username: String, password: String) -> Result<Session, String> {
+    pub fn login_user(
+        &self,
+        username: String,
+        password: String,
+        mut session: Session,
+    ) -> Result<Session, String> {
         Self::validate_password(&password)?;
 
         match self.users.get(&username) {
             None => return Err("Username or password is incorrect".to_string()),
             Some(user) => {
                 if Self::verify_password(&user.password, &password).map_err(|e| e.to_string())? {
-                    Ok(Session {
-                        is_authenticated: true,
-                        username: username,
-                    })
+                    Ok(session.set_authenticated(&username))
                 } else {
                     Err("Username or password is incorrect".to_string())
                 }

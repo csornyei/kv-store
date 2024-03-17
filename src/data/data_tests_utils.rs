@@ -6,8 +6,5 @@ pub fn create_data_manager() -> DataManager {
 }
 
 pub fn create_session() -> Session {
-    Session {
-        is_authenticated: true,
-        username: "admin".to_string(),
-    }
+    Session::new().set_authenticated("admin")
 }

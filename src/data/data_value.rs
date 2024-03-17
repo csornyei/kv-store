@@ -3,7 +3,12 @@ use crate::data::DataTypes;
 pub trait Data {
     fn get_type(&self) -> DataTypes;
 
-    fn set(&mut self, key: String, value: String, data_type: DataTypes) -> Result<String, String>;
+    fn set_value(
+        &mut self,
+        key: String,
+        value: String,
+        data_type: DataTypes,
+    ) -> Result<String, String>;
 
     fn get(&self, key: String) -> Result<String, String>;
 
@@ -27,7 +32,12 @@ impl Data for DataValue {
         self.data_type.clone()
     }
 
-    fn set(&mut self, key: String, value: String, data_type: DataTypes) -> Result<String, String> {
+    fn set_value(
+        &mut self,
+        key: String,
+        value: String,
+        data_type: DataTypes,
+    ) -> Result<String, String> {
         if data_type != self.data_type {
             return Err("Invalid data type".to_string());
         }

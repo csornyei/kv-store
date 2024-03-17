@@ -1,17 +1,15 @@
-use crate::commands::{Command, CommandNames};
-use crate::data::{
+use super::{
     auth_manager::{AuthManager, Permissions},
     data_type::DataTypes,
-    data_value::DataValue,
+    data_value::Data,
+    store::{Store, StoreManager},
 };
+use crate::commands::{Command, CommandNames};
 use crate::session::Session;
-use std::collections::HashMap;
 use std::str::FromStr;
 
-use super::data_value::Data;
-
 pub struct DataManager {
-    data: HashMap<String, Box<dyn Data + Send + Sync>>,
+    data: Store,
     auth_manager: AuthManager,
 }
 
@@ -19,7 +17,7 @@ impl DataManager {
     pub fn new(admin_username: String, admin_password: String) -> Result<DataManager, String> {
         let auth_manager = AuthManager::new(admin_username, admin_password, 255)?;
         Ok(DataManager {
-            data: HashMap::new(),
+            data: Store::new(".".to_string()),
             auth_manager,
         })
     }
@@ -136,15 +134,23 @@ impl DataManager {
             }
             CommandNames::CREATE_STORE => {
                 self.check_auth(&session, Permissions::SET)?;
-                Err("Not implemented".to_string())
-            }
-            CommandNames::DELETE_STORE => {
-                self.check_auth(&session, Permissions::DEL)?;
-                Err("Not implemented".to_string())
+                let store_name = cmd.args[0].clone();
+
+                let result = self.create_store(store_name);
+                match result {
+                    Ok(_) => Ok(("OK".to_string(), session)),
+                    Err(e) => Err(e),
+                }
             }
             CommandNames::LIST_KEYS => {
                 self.check_auth(&session, Permissions::GET)?;
-                Err("Not implemented".to_string())
+
+                let result = self.list_keys();
+
+                match result {
+                    Ok(keys) => Ok((keys, session)),
+                    Err(e) => Err(e),
+                }
             }
         }
     }
@@ -171,25 +177,22 @@ impl DataManager {
     }
 
     fn set(&mut self, key: String, value: String, data_type: DataTypes) -> Result<String, String> {
-        let data_value = DataValue::new(value, data_type)?;
-        self.data.insert(key, Box::new(data_value));
+        self.data.set_value(key, value, data_type)?;
         Ok("OK".to_string())
     }
 
     fn get(&self, key: String) -> Result<String, String> {
-        match self.data.get(&key) {
-            Some(value) => {
-                let value = value.get(key.to_string()).unwrap();
-                Ok(value)
-            }
-            None => Err("Key not found".to_string()),
+        let value_result = self.data.get(key);
+        match value_result {
+            Ok(value) => Ok(value),
+            Err(e) => Err(e),
         }
     }
 
     fn del(&mut self, key: String) -> Result<String, String> {
-        match self.data.remove(&key) {
-            Some(_) => Ok("OK".to_string()),
-            None => Err("Key not found".to_string()),
+        match self.data.del(key) {
+            Ok(_) => Ok("OK".to_string()),
+            Err(_) => Err("Key not found".to_string()),
         }
     }
 
@@ -214,5 +217,15 @@ impl DataManager {
 
     fn delete_user(&mut self, user_name: String) -> Result<String, String> {
         self.auth_manager.delete_user(user_name)
+    }
+
+    fn create_store(&mut self, store_name: String) -> Result<String, String> {
+        self.data.set_store(store_name)?;
+        Ok("OK".to_string())
+    }
+
+    fn list_keys(&self) -> Result<String, String> {
+        let keys = self.data.list_keys()?;
+        Ok(keys.join(","))
     }
 }

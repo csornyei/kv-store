@@ -21,7 +21,6 @@ pub enum CommandNames {
 
     // Store management commands
     CREATE_STORE,
-    DELETE_STORE,
     LIST_KEYS,
 }
 
@@ -38,7 +37,6 @@ impl Display for CommandNames {
             CommandNames::GRANT => write!(f, "GRANT"),
             CommandNames::REVOKE => write!(f, "REVOKE"),
             CommandNames::CREATE_STORE => write!(f, "CREATE_STORE"),
-            CommandNames::DELETE_STORE => write!(f, "DELETE_STORE"),
             CommandNames::LIST_KEYS => write!(f, "LIST_KEYS"),
         }
     }
@@ -59,7 +57,6 @@ impl FromStr for CommandNames {
             "GRANT" => Ok(CommandNames::GRANT),
             "REVOKE" => Ok(CommandNames::REVOKE),
             "CREATE_STORE" => Ok(CommandNames::CREATE_STORE),
-            "DELETE_STORE" => Ok(CommandNames::DELETE_STORE),
             "LIST_KEYS" => Ok(CommandNames::LIST_KEYS),
             _ => Err(Error::new(ErrorKind::InvalidInput, "Invalid command;")),
         }

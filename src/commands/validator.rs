@@ -17,7 +17,6 @@ pub fn validate_args(name: &CommandNames, args: Vec<String>) -> Result<(), Error
         CommandNames::GRANT => validate_grant_args(args),
         CommandNames::REVOKE => validate_revoke_args(args),
         CommandNames::CREATE_STORE => validate_create_store_args(args),
-        CommandNames::DELETE_STORE => validate_delete_store_args(args),
         CommandNames::LIST_KEYS => validate_list_keys_args(args),
     }
 }
@@ -130,16 +129,6 @@ fn validate_revoke_args(args: Vec<String>) -> Result<(), Error> {
 }
 
 fn validate_create_store_args(args: Vec<String>) -> Result<(), Error> {
-    if args.len() != 1 {
-        return Err(Error::new(
-            ErrorKind::InvalidInput,
-            "Invalid number of arguments",
-        ));
-    }
-    Ok(())
-}
-
-fn validate_delete_store_args(args: Vec<String>) -> Result<(), Error> {
     if args.len() != 1 {
         return Err(Error::new(
             ErrorKind::InvalidInput,

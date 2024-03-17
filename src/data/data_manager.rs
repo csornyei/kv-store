@@ -133,6 +133,18 @@ impl DataManager {
 
                 Ok(("OK".to_string(), session))
             }
+            CommandNames::CREATE_STORE => {
+                self.check_auth(&session, Permissions::SET)?;
+                Err("Not implemented".to_string())
+            }
+            CommandNames::DELETE_STORE => {
+                self.check_auth(&session, Permissions::DEL)?;
+                Err("Not implemented".to_string())
+            }
+            CommandNames::LIST_KEYS => {
+                self.check_auth(&session, Permissions::GET)?;
+                Err("Not implemented".to_string())
+            }
         }
     }
 

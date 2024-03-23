@@ -12,7 +12,7 @@ use tokio::{
 use lazy_static::lazy_static;
 use tempfile::NamedTempFile;
 
-use kvstore::data::DataManager;
+use kvstore::data::{DataManager, Store};
 use kvstore::start_server;
 
 const ADDRESS: &str = "127.0.0.1";
@@ -29,15 +29,16 @@ async fn get_next_port() -> u16 {
 }
 
 async fn start_test_server(port: u16, file_path: Option<String>) -> tokio::task::JoinHandle<()> {
-    let persistence = match file_path {
-        Some(path) => Persistence::new_json_file(path),
-        None => Persistence::new_in_memory(),
-    };
+    // let persistence = match file_path {
+    //     Some(path) => Persistence::new_json_file(path),
+    //     None => Persistence::new_in_memory(),
+    // };
     tokio::spawn(async move {
-        let data = Arc::new(Mutex::new(
-            DataManager::new("admin".to_string(), "Password4".to_string(), persistence)
-                .expect("Failed to create data manager!"),
-        ));
+        let data = Arc::new(Mutex::new(Store::new(".".to_string())));
+        // let data = Arc::new(Mutex::new(
+        //     DataManager::new("admin".to_string(), "Password4".to_string(), persistence)
+        //         .expect("Failed to create data manager!"),
+        // ));
         start_server(ADDRESS, port, data).await.unwrap();
     })
 }

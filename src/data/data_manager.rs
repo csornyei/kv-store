@@ -1,3 +1,5 @@
+use tokio::sync::Mutex;
+
 use super::{
     data_type::DataTypes,
     key::Key,
@@ -9,22 +11,18 @@ use crate::{
     persistence::Persistence,
     session::Session,
 };
-use std::str::FromStr;
+use std::{str::FromStr, sync::Arc};
 
 pub struct DataManager {
-    data: Store,
+    pub data: Arc<Mutex<Store>>,
     auth_manager: AuthManager,
     pub persistence: Persistence,
 }
 
 impl DataManager {
-    pub fn new(
-        admin_username: String,
-        admin_password: String,
-        persistence: Persistence,
-    ) -> Result<DataManager, String> {
-        let auth_manager = AuthManager::new(admin_username, admin_password, 255)?;
-        let data = persistence.load_store()?;
+    pub fn new(data: Arc<Mutex<Store>>) -> Result<Self, String> {
+        let auth_manager = AuthManager::new("admin".to_string(), "Password4".to_string(), 255)?;
+        let persistence = Persistence::new_in_memory();
         Ok(DataManager {
             data,
             auth_manager,
@@ -32,14 +30,15 @@ impl DataManager {
         })
     }
 
-    pub fn save_to_file(&self) -> Result<(), String> {
-        match self.persistence.save_store(&self.data) {
+    pub async fn save_to_file(&self) -> Result<(), String> {
+        let data = &self.data.lock().await;
+        match self.persistence.save_store(data) {
             Ok(_) => Ok(()),
             Err(e) => Err(e),
         }
     }
 
-    pub fn handle_command(
+    pub async fn handle_command(
         &mut self,
         cmd: Command,
         session: Session,
@@ -50,7 +49,7 @@ impl DataManager {
                 let key = Key::new(cmd.args[0].clone());
                 let value = cmd.args[1].clone();
                 let data_type = DataTypes::from_str(&cmd.args[2])?;
-                let result = self.set(key, value, data_type);
+                let result = self.set(key, value, data_type).await;
                 match result {
                     Ok(_) => Ok(("OK".to_string(), session)),
                     Err(e) => Err(e),
@@ -59,7 +58,7 @@ impl DataManager {
             CommandNames::GET => {
                 self.check_auth(&session, Permissions::GET)?;
                 let key = Key::new(cmd.args[0].clone());
-                let result = self.get(key);
+                let result = self.get(key).await;
                 match result {
                     Ok(value) => Ok((value, session)),
                     Err(e) => Err(e),
@@ -68,7 +67,7 @@ impl DataManager {
             CommandNames::DEL => {
                 self.check_auth(&session, Permissions::DEL)?;
                 let key = Key::new(cmd.args[0].clone());
-                let result = self.del(key);
+                let result = self.del(key).await;
                 match result {
                     Ok(_) => Ok(("OK".to_string(), session)),
                     Err(e) => Err(e),
@@ -153,7 +152,7 @@ impl DataManager {
                 self.check_auth(&session, Permissions::SET)?;
                 let store_name = Key::new(cmd.args[0].clone());
 
-                let result = self.create_store(store_name);
+                let result = self.create_store(store_name).await;
                 match result {
                     Ok(_) => Ok(("OK".to_string(), session)),
                     Err(e) => Err(e),
@@ -165,9 +164,11 @@ impl DataManager {
                 let key = cmd.args[0].clone();
 
                 if key == "." {
-                    return Ok((self.data.list_keys()?, session));
+                    let data = self.data.lock().await;
+                    return Ok((data.list_keys()?, session));
                 } else {
-                    let store = self.data.get_store(key.clone());
+                    let mut data = self.data.lock().await;
+                    let store = data.get_store(key.clone());
                     match store {
                         Ok(store) => {
                             return Ok((store.list_keys()?, session));
@@ -202,17 +203,25 @@ impl DataManager {
         Ok(())
     }
 
-    fn set(&mut self, key: Key, value: String, data_type: DataTypes) -> Result<String, String> {
-        self.data.set(key, value, data_type)?;
+    async fn set(
+        &mut self,
+        key: Key,
+        value: String,
+        data_type: DataTypes,
+    ) -> Result<String, String> {
+        let mut data = self.data.lock().await;
+        data.set(key, value, data_type)?;
         Ok("OK".to_string())
     }
 
-    fn get(&mut self, key: Key) -> Result<String, String> {
-        self.data.get(key)
+    async fn get(&mut self, key: Key) -> Result<String, String> {
+        let mut data = self.data.lock().await;
+        data.get(key)
     }
 
-    fn del(&mut self, key: Key) -> Result<String, String> {
-        match self.data.del(key) {
+    async fn del(&mut self, key: Key) -> Result<String, String> {
+        let mut data = self.data.lock().await;
+        match data.del(key) {
             Ok(_) => Ok("OK".to_string()),
             Err(_) => Err("Key not found".to_string()),
         }
@@ -241,8 +250,9 @@ impl DataManager {
         self.auth_manager.delete_user(user_name)
     }
 
-    fn create_store(&mut self, store_name: Key) -> Result<String, String> {
-        self.data.set_store(store_name)?;
+    async fn create_store(&mut self, store_name: Key) -> Result<String, String> {
+        let mut data = self.data.lock().await;
+        data.set_store(store_name)?;
         Ok("OK".to_string())
     }
 }

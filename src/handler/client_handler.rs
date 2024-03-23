@@ -1,5 +1,5 @@
 use crate::commands::Command;
-use crate::data::DataManager;
+use crate::data::{DataManager, Store};
 use crate::persistence::PersistenceType;
 use crate::session::Session;
 use std::{str::FromStr, sync::Arc};
@@ -11,11 +11,11 @@ use tokio::{
 
 pub struct ClientHandler {
     socket: TcpStream,
-    data: Arc<Mutex<DataManager>>,
+    data: Arc<Mutex<Store>>,
 }
 
-impl ClientHandler {
-    pub fn new(socket: TcpStream, data: Arc<Mutex<DataManager>>) -> Self {
+impl<'a> ClientHandler {
+    pub fn new(socket: TcpStream, data: Arc<Mutex<Store>>) -> Self {
         Self { socket, data }
     }
 
@@ -47,14 +47,13 @@ impl ClientHandler {
 
     async fn execute_command(
         &self,
-        data: Arc<Mutex<DataManager>>,
+        data: &mut DataManager,
         session: Session,
         command: Command,
     ) -> Result<(String, Session), String> {
-        let mut data = data.lock().await;
-        let result = data.handle_command(command, session)?;
+        let result = data.handle_command(command, session).await?;
         if data.persistence.get_type() == PersistenceType::JsonFile {
-            match data.save_to_file() {
+            match data.save_to_file().await {
                 Ok(_) => Ok(result),
                 Err(e) => Err(e),
             }
@@ -91,9 +90,10 @@ impl ClientHandler {
         let _ = self.socket.write_all(results_string.as_bytes()).await;
     }
 
-    async fn handle_client(mut self) {
+    async fn handle_client(mut self, data: Arc<Mutex<Store>>) {
         let mut buf = [0; 1024];
         let mut session = Session::new();
+        let mut data_manager = DataManager::new(data).unwrap();
 
         loop {
             match self.socket.read(&mut buf).await {
@@ -127,7 +127,7 @@ impl ClientHandler {
                                 results.push(
                                     self.handle_command_result(
                                         self.execute_command(
-                                            Arc::clone(&self.data),
+                                            &mut data_manager,
                                             session.clone(),
                                             cmd,
                                         )
@@ -149,8 +149,9 @@ impl ClientHandler {
     }
 
     pub async fn spawn_handler(self) {
+        let data = Arc::clone(&self.data);
         tokio::spawn(async move {
-            self.handle_client().await;
+            self.handle_client(data).await;
         });
     }
 }

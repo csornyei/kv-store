@@ -5,7 +5,7 @@ pub mod handler;
 pub mod persistence;
 pub mod session;
 
-use data::DataManager;
+use data::Store;
 use handler::ClientHandler;
 use std::sync::Arc;
 
@@ -15,7 +15,7 @@ use tokio::sync::Mutex;
 pub async fn start_server(
     address: &str,
     port: u16,
-    data: Arc<Mutex<DataManager>>,
+    data: Arc<Mutex<Store>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let listener = TcpListener::bind(format!("{}:{}", address, port)).await?;
     println!("Server listening on port {}", port);

@@ -1,9 +1,10 @@
-use crate::session::Session;
-
 use regex::Regex;
 use std::collections::HashMap;
 
-use crate::auth::{Permissions, User};
+use crate::{
+    auth::{Permissions, User},
+    session::Session,
+};
 
 #[derive(Debug)]
 pub struct AuthManager {

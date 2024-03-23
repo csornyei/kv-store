@@ -5,7 +5,7 @@ mod key;
 mod store;
 pub use data_manager::*;
 pub use data_type::*;
-pub use store::Store;
+pub use store::{Store, StoreManager};
 
 #[cfg(test)]
 mod test;

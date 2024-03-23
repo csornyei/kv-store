@@ -192,22 +192,7 @@ impl DataManager {
     }
 
     fn get(&mut self, key: Key) -> Result<String, String> {
-        if !key.is_value_key() {
-            return Err("Invalid key".to_string());
-        }
-        if key.store.is_none() {
-            return self.data.get(key.key.unwrap());
-        } else {
-            let store = self.data.get_store(key.store.clone().unwrap());
-            match store {
-                Ok(store) => {
-                    return store.get(key.get_next_key().to_str());
-                }
-                Err(_) => {
-                    return Err("Invalid store".to_string());
-                }
-            }
-        }
+        self.data.get(key)
     }
 
     fn del(&mut self, key: String) -> Result<String, String> {

@@ -31,7 +31,7 @@ impl Store {
 
     pub fn set(&mut self, key: Key, value: String, data_type: DataTypes) -> Result<String, String> {
         if key.is_value_key() {
-            return self.set_value(key.key.unwrap(), value, data_type);
+            return self.set_value(key, value, data_type);
         }
 
         let store = key.store.clone().unwrap();
@@ -41,6 +41,19 @@ impl Store {
 
         store.set(key, value, data_type)
     }
+
+    pub fn get(&mut self, key: Key) -> Result<String, String> {
+        if key.is_value_key() {
+            return self.get_value(key);
+        }
+
+        let store = key.store.clone().unwrap();
+        let store: &mut Store = self.get_store(store)?;
+
+        let key = key.get_next_key();
+
+        store.get(key)
+    }
 }
 
 impl Data for Store {
@@ -48,20 +61,30 @@ impl Data for Store {
         DataTypes::STORE
     }
 
-    fn get(&self, key: String) -> Result<String, String> {
-        self.data
-            .get(&key)
-            .map(|data| data.get(key.clone()))
-            .unwrap_or(Err("Key not found".to_string()))
+    fn get_value(&self, key: Key) -> Result<String, String> {
+        if key.is_value_key() {
+            let data_key = key.key.clone().unwrap();
+
+            let data = self.data.get(&data_key);
+
+            if data.is_none() {
+                return Err("Key not found".to_string());
+            }
+
+            return data.unwrap().get_value(key);
+        } else {
+            return Err("Invalid key".to_string());
+        }
     }
 
     fn set_value(
         &mut self,
-        key: String,
+        key: Key,
         value: String,
         data_type: DataTypes,
     ) -> Result<String, String> {
-        self.data.insert(key, DataValue::new(value, data_type)?);
+        self.data
+            .insert(key.key.clone().unwrap(), DataValue::new(value, data_type)?);
         Ok("OK".to_string())
     }
 

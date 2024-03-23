@@ -70,6 +70,11 @@ fn test_validate_get_args() {
         Ok(_) => panic!("Expected error"),
         Err(e) => assert_eq!(e.to_string(), "Invalid number of arguments"),
     }
+
+    match Command::from_str("GET .") {
+        Ok(_) => panic!("Expected error"),
+        Err(e) => assert_eq!(e.to_string(), "Forbidden key name! ."),
+    }
 }
 
 #[test]

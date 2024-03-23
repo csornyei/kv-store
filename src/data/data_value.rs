@@ -1,16 +1,18 @@
 use crate::data::DataTypes;
 
+use super::key::Key;
+
 pub trait Data {
     fn get_type(&self) -> DataTypes;
 
     fn set_value(
         &mut self,
-        key: String,
+        key: Key,
         value: String,
         data_type: DataTypes,
     ) -> Result<String, String>;
 
-    fn get(&self, key: String) -> Result<String, String>;
+    fn get_value(&self, key: Key) -> Result<String, String>;
 
     fn del(&mut self, key: String) -> Result<String, String>;
 }
@@ -34,7 +36,7 @@ impl Data for DataValue {
 
     fn set_value(
         &mut self,
-        key: String,
+        key: Key,
         value: String,
         data_type: DataTypes,
     ) -> Result<String, String> {
@@ -42,10 +44,10 @@ impl Data for DataValue {
             return Err("Invalid data type".to_string());
         }
         self.value = value;
-        Ok(format!("{} set", key))
+        Ok(format!("{} set", key.to_str()))
     }
 
-    fn get(&self, _key: String) -> Result<String, String> {
+    fn get_value(&self, _key: Key) -> Result<String, String> {
         Ok(self.value.clone())
     }
 

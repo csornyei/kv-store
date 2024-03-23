@@ -7,6 +7,7 @@ mod store;
 pub use auth_manager::*;
 pub use data_manager::*;
 pub use data_type::*;
+pub use store::Store;
 
 #[cfg(test)]
 mod data_tests_utils;

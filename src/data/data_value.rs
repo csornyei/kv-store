@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::data::DataTypes;
 
 use super::key::Key;
@@ -17,6 +19,7 @@ pub trait Data {
     fn del(&mut self, key: String) -> Result<String, String>;
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct DataValue {
     pub value: String,
     data_type: DataTypes,

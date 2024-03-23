@@ -1,5 +1,7 @@
 extern crate kvstore;
 
+use kvstore::persistence::Persistence;
+use std::io::{Read, Write};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::{
@@ -7,15 +9,33 @@ use tokio::{
     net::TcpStream,
 };
 
+use lazy_static::lazy_static;
+use tempfile::NamedTempFile;
+
 use kvstore::data::DataManager;
 use kvstore::start_server;
 
 const ADDRESS: &str = "127.0.0.1";
 
-async fn start_test_server(port: u16) -> tokio::task::JoinHandle<()> {
+lazy_static! {
+    static ref PORT_TRACKER: Arc<Mutex<u16>> = Arc::new(Mutex::new(65500));
+}
+
+async fn get_next_port() -> u16 {
+    let mut port = PORT_TRACKER.lock().await;
+    let current_port = *port;
+    *port += 1;
+    current_port
+}
+
+async fn start_test_server(port: u16, file_path: Option<String>) -> tokio::task::JoinHandle<()> {
+    let persistence = match file_path {
+        Some(path) => Persistence::new_json_file(path),
+        None => Persistence::new_in_memory(),
+    };
     tokio::spawn(async move {
         let data = Arc::new(Mutex::new(
-            DataManager::new("admin".to_string(), "Password4".to_string())
+            DataManager::new("admin".to_string(), "Password4".to_string(), persistence)
                 .expect("Failed to create data manager!"),
         ));
         start_server(ADDRESS, port, data).await.unwrap();
@@ -33,13 +53,13 @@ async fn send_command(mut client: TcpStream, command: &str) -> (TcpStream, Strin
 
 #[tokio::test]
 async fn test_integration_simple_key_value_flow() {
-    const PORT: u16 = 65500;
+    let port = get_next_port().await;
 
-    let server_handle = start_test_server(PORT).await;
+    let server_handle = start_test_server(port, None).await;
 
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
-    let client = TcpStream::connect(format!("{}:{}", ADDRESS, PORT))
+    let client = TcpStream::connect(format!("{}:{}", ADDRESS, port))
         .await
         .unwrap();
 
@@ -63,19 +83,19 @@ async fn test_integration_simple_key_value_flow() {
 
 #[tokio::test]
 async fn test_integration_two_clients() {
-    const PORT: u16 = 65501;
-    let server_handle = start_test_server(PORT).await;
+    let port = get_next_port().await;
+    let server_handle = start_test_server(port, None).await;
 
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
-    let first_client = TcpStream::connect(format!("{}:{}", ADDRESS, PORT))
+    let first_client = TcpStream::connect(format!("{}:{}", ADDRESS, port))
         .await
         .unwrap();
 
     let (first_client, response) = send_command(first_client, "AUTH admin Password4;").await;
     assert_eq!("OK;", response);
 
-    let second_client = TcpStream::connect(format!("{}:{}", ADDRESS, PORT))
+    let second_client = TcpStream::connect(format!("{}:{}", ADDRESS, port))
         .await
         .unwrap();
 
@@ -108,15 +128,15 @@ async fn test_integration_two_clients() {
 
 #[tokio::test]
 async fn test_integration_lot_clients() {
-    const PORT: u16 = 65502;
-    let server_handle = start_test_server(PORT).await;
+    let port = get_next_port().await;
+    let server_handle = start_test_server(port, None).await;
 
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
     let mut handles = Vec::new();
 
     for i in 0..10 {
-        let client = TcpStream::connect(format!("{}:{}", ADDRESS, PORT))
+        let client = TcpStream::connect(format!("{}:{}", ADDRESS, port))
             .await
             .unwrap();
 
@@ -159,13 +179,13 @@ async fn test_integration_lot_clients() {
 
 #[tokio::test]
 async fn test_integration_batch_commands() {
-    const PORT: u16 = 65503;
+    let port = get_next_port().await;
 
-    let _ = start_test_server(PORT).await;
+    let _ = start_test_server(port, None).await;
 
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
-    let client = TcpStream::connect(format!("{}:{}", ADDRESS, PORT))
+    let client = TcpStream::connect(format!("{}:{}", ADDRESS, port))
         .await
         .unwrap();
 
@@ -182,13 +202,13 @@ async fn test_integration_batch_commands() {
 
 #[tokio::test]
 async fn test_integration_incomplete_command() {
-    const PORT: u16 = 65505;
+    let port = get_next_port().await;
 
-    let _ = start_test_server(PORT).await;
+    let _ = start_test_server(port, None).await;
 
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
-    let client = TcpStream::connect(format!("{}:{}", ADDRESS, PORT))
+    let client = TcpStream::connect(format!("{}:{}", ADDRESS, port))
         .await
         .unwrap();
 
@@ -209,4 +229,88 @@ async fn test_integration_incomplete_command() {
 
     let (_, response) = send_command(client, "key1 value1; SET key2 value2;").await;
     assert_eq!(response, "OK;OK;");
+}
+
+#[tokio::test]
+async fn test_integration_persistence_save_to_json() {
+    let port = get_next_port().await;
+
+    let mut temp_file = NamedTempFile::new().expect("Failed to create temporary file");
+
+    let file_path = temp_file.path().to_str().expect("No path").to_string();
+
+    let _ = start_test_server(port, Some(file_path.clone())).await;
+
+    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+
+    let client = TcpStream::connect(format!("{}:{}", ADDRESS, port))
+        .await
+        .unwrap();
+
+    let (client, response) = send_command(client, "AUTH admin Password4;").await;
+
+    assert_eq!(response, "OK;");
+
+    let (client, response) = send_command(client, "SET test_key test_value;").await;
+
+    assert_eq!(response, "OK;");
+
+    let (client, response) = send_command(client, "CREATE_STORE users;").await;
+
+    assert_eq!(response, "OK;");
+
+    let (client, response) = send_command(client, "CREATE_STORE users:john_doe;").await;
+
+    assert_eq!(response, "OK;");
+
+    let (_, response) = send_command(client, "SET users:john_doe:age 42 INT;").await;
+
+    assert_eq!(response, "OK;");
+
+    let mut buf = String::new();
+
+    temp_file
+        .read_to_string(&mut buf)
+        .expect("Failed to read from file");
+
+    assert_eq!(buf, "{\"name\":\".\",\"data\":{\"test_key\":{\"value\":\"test_value\",\"data_type\":\"STRING\"}},\"stores\":{\"users\":{\"name\":\"users\",\"data\":{},\"stores\":{\"john_doe\":{\"name\":\"john_doe\",\"data\":{\"age\":{\"value\":\"42\",\"data_type\":\"INT\"}},\"stores\":{}}}}}}");
+}
+
+#[tokio::test]
+async fn test_integration_persistence_load_from_json() {
+    let port = get_next_port().await;
+
+    let mut temp_file = NamedTempFile::new().expect("Failed to create temporary file");
+
+    let data = "{\"name\":\".\",\"data\":{\"test_key\":{\"value\":\"test_value\",\"data_type\":\"STRING\"}},\"stores\":{\"users\":{\"name\":\"users\",\"data\":{},\"stores\":{\"john_doe\":{\"name\":\"john_doe\",\"data\":{\"age\":{\"value\":\"42\",\"data_type\":\"INT\"}},\"stores\":{}}}}}}";
+
+    temp_file
+        .write_all(data.as_bytes())
+        .expect("Failed to write to file");
+
+    let file_path = temp_file.path().to_str().expect("No path").to_string();
+
+    let _ = start_test_server(port, Some(file_path.clone())).await;
+
+    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+
+    let client = TcpStream::connect(format!("{}:{}", ADDRESS, port))
+        .await
+        .unwrap();
+
+    let (client, response) = send_command(client, "AUTH admin Password4;").await;
+
+    assert_eq!(response, "OK;");
+
+    let (client, response) = send_command(client, "GET test_key;").await;
+
+    assert_eq!(response, "test_value;");
+
+    let (client, response) = send_command(client, "GET users:john_doe:age;").await;
+
+    assert_eq!(response, "42;");
+
+    let (_, response) = send_command(client, "GET users:john_doe:age;").await;
+
+    assert_eq!(response, "42;");
 }

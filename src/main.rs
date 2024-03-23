@@ -1,5 +1,5 @@
-use kvstore::data::DataManager;
 use kvstore::start_server;
+use kvstore::{data::DataManager, persistence::Persistence};
 use std::{error::Error, sync::Arc};
 use tokio::sync::Mutex;
 
@@ -24,14 +24,28 @@ struct Args {
     // Port to bind the server to
     #[clap(short, long, default_value = "8080")]
     port: u16,
+
+    // Persistence type
+    #[clap(short = 'T', long, default_value = "in_memory")]
+    persistence: String,
+
+    // JSON file path to persist data
+    #[clap(short, long, default_value = "")]
+    file_path: String,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
-    let data_manager =
-        DataManager::new(args.username, args.password).expect("Failed to create data manager!");
+    let persistence = match args.persistence.as_str() {
+        "in_memory" => Persistence::new_in_memory(),
+        "json" => Persistence::new_json_file(args.file_path),
+        _ => return Err("Invalid persistence type!".into()),
+    };
+
+    let data_manager = DataManager::new(args.username, args.password, persistence)
+        .expect("Failed to create data manager");
 
     let data = Arc::new(Mutex::new(data_manager));
 

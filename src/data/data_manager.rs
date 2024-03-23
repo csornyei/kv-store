@@ -5,22 +5,39 @@ use super::{
     key::Key,
     store::{Store, StoreManager},
 };
-use crate::commands::{Command, CommandNames};
 use crate::session::Session;
+use crate::{
+    commands::{Command, CommandNames},
+    persistence::Persistence,
+};
 use std::str::FromStr;
 
 pub struct DataManager {
     data: Store,
     auth_manager: AuthManager,
+    pub persistence: Persistence,
 }
 
 impl DataManager {
-    pub fn new(admin_username: String, admin_password: String) -> Result<DataManager, String> {
+    pub fn new(
+        admin_username: String,
+        admin_password: String,
+        persistence: Persistence,
+    ) -> Result<DataManager, String> {
         let auth_manager = AuthManager::new(admin_username, admin_password, 255)?;
+        let data = persistence.load_store()?;
         Ok(DataManager {
-            data: Store::new(".".to_string()),
+            data,
             auth_manager,
+            persistence,
         })
+    }
+
+    pub fn save_to_file(&self) -> Result<(), String> {
+        match self.persistence.save_store(&self.data) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 
     pub fn handle_command(

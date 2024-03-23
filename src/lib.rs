@@ -1,6 +1,7 @@
 pub mod commands;
 pub mod data;
 pub mod handler;
+pub mod persistence;
 pub mod session;
 
 use data::DataManager;

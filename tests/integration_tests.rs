@@ -1,5 +1,6 @@
 extern crate kvstore;
 
+use kvstore::persistence::Persistence;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::{
@@ -15,8 +16,12 @@ const ADDRESS: &str = "127.0.0.1";
 async fn start_test_server(port: u16) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         let data = Arc::new(Mutex::new(
-            DataManager::new("admin".to_string(), "Password4".to_string())
-                .expect("Failed to create data manager!"),
+            DataManager::new(
+                "admin".to_string(),
+                "Password4".to_string(),
+                Persistence::new_in_memory(),
+            )
+            .expect("Failed to create data manager!"),
         ));
         start_server(ADDRESS, port, data).await.unwrap();
     })

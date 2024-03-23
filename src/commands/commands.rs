@@ -55,14 +55,14 @@ impl Command {
         let value = args[1].clone();
 
         let data_type = if args.len() == 2 {
-            DataTypes::STRING
+            DataTypes::STRING.to_string()
         } else {
-            DataTypes::from_str(&args[2]).unwrap()
+            args[2].clone()
         };
 
         Command {
             name,
-            args: vec![key, value, data_type.to_string()],
+            args: vec![key, value, data_type],
         }
     }
 }

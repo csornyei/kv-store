@@ -1,12 +1,16 @@
+use super::{
+    auth_manager::{AuthManager, Permissions},
+    data_type::DataTypes,
+    data_value::Data,
+    key::Key,
+    store::{Store, StoreManager},
+};
 use crate::commands::{Command, CommandNames};
-use crate::data::auth_manager::{AuthManager, Permissions};
 use crate::session::Session;
-use std::collections::HashMap;
 use std::str::FromStr;
 
-#[derive(Debug)]
 pub struct DataManager {
-    data: HashMap<String, String>,
+    data: Store,
     auth_manager: AuthManager,
 }
 
@@ -14,7 +18,7 @@ impl DataManager {
     pub fn new(admin_username: String, admin_password: String) -> Result<DataManager, String> {
         let auth_manager = AuthManager::new(admin_username, admin_password, 255)?;
         Ok(DataManager {
-            data: HashMap::new(),
+            data: Store::new(".".to_string()),
             auth_manager,
         })
     }
@@ -27,9 +31,10 @@ impl DataManager {
         match cmd.name {
             CommandNames::SET => {
                 self.check_auth(&session, Permissions::SET)?;
-                let key = cmd.args[0].clone();
+                let key = Key::new(cmd.args[0].clone());
                 let value = cmd.args[1].clone();
-                let result = self.set(key, value);
+                let data_type = DataTypes::from_str(&cmd.args[2])?;
+                let result = self.set(key, value, data_type);
                 match result {
                     Ok(_) => Ok(("OK".to_string(), session)),
                     Err(e) => Err(e),
@@ -37,7 +42,7 @@ impl DataManager {
             }
             CommandNames::GET => {
                 self.check_auth(&session, Permissions::GET)?;
-                let key = cmd.args[0].clone();
+                let key = Key::new(cmd.args[0].clone());
                 let result = self.get(key);
                 match result {
                     Ok(value) => Ok((value, session)),
@@ -128,6 +133,35 @@ impl DataManager {
 
                 Ok(("OK".to_string(), session))
             }
+            CommandNames::CREATE_STORE => {
+                self.check_auth(&session, Permissions::SET)?;
+                let store_name = Key::new(cmd.args[0].clone());
+
+                let result = self.create_store(store_name);
+                match result {
+                    Ok(_) => Ok(("OK".to_string(), session)),
+                    Err(e) => Err(e),
+                }
+            }
+            CommandNames::LIST_KEYS => {
+                self.check_auth(&session, Permissions::GET)?;
+
+                let key = cmd.args[0].clone();
+
+                if key == "." {
+                    return Ok((self.data.list_keys()?, session));
+                } else {
+                    let store = self.data.get_store(key.clone());
+                    match store {
+                        Ok(store) => {
+                            return Ok((store.list_keys()?, session));
+                        }
+                        Err(_) => {
+                            return Err("Invalid store".to_string());
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -152,22 +186,19 @@ impl DataManager {
         Ok(())
     }
 
-    fn set(&mut self, key: String, value: String) -> Result<String, String> {
-        self.data.insert(key, value);
+    fn set(&mut self, key: Key, value: String, data_type: DataTypes) -> Result<String, String> {
+        self.data.set(key, value, data_type)?;
         Ok("OK".to_string())
     }
 
-    fn get(&self, key: String) -> Result<String, String> {
-        match self.data.get(&key) {
-            Some(value) => Ok(value.clone()),
-            None => Err("Key not found".to_string()),
-        }
+    fn get(&mut self, key: Key) -> Result<String, String> {
+        self.data.get(key)
     }
 
     fn del(&mut self, key: String) -> Result<String, String> {
-        match self.data.remove(&key) {
-            Some(_) => Ok("OK".to_string()),
-            None => Err("Key not found".to_string()),
+        match self.data.del(key) {
+            Ok(_) => Ok("OK".to_string()),
+            Err(_) => Err("Key not found".to_string()),
         }
     }
 
@@ -192,5 +223,10 @@ impl DataManager {
 
     fn delete_user(&mut self, user_name: String) -> Result<String, String> {
         self.auth_manager.delete_user(user_name)
+    }
+
+    fn create_store(&mut self, store_name: Key) -> Result<String, String> {
+        self.data.set_store(store_name)?;
+        Ok("OK".to_string())
     }
 }

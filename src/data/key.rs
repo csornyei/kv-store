@@ -70,10 +70,7 @@ impl Key {
         Key::new(key_str)
     }
 
-    pub fn valid_get_key(&self) -> bool {
-        if self.key.is_none() {
-            return false;
-        }
-        true
+    pub fn is_value_key(&self) -> bool {
+        self.store.is_none() && self.path.is_none()
     }
 }

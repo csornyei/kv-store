@@ -2,6 +2,7 @@ use super::{
     auth_manager::{AuthManager, Permissions},
     data_type::DataTypes,
     data_value::Data,
+    key::Key,
     store::{Store, StoreManager},
 };
 use crate::commands::{Command, CommandNames};
@@ -30,7 +31,7 @@ impl DataManager {
         match cmd.name {
             CommandNames::SET => {
                 self.check_auth(&session, Permissions::SET)?;
-                let key = cmd.args[0].clone();
+                let key = Key::new(cmd.args[0].clone());
                 let value = cmd.args[1].clone();
                 let data_type = DataTypes::from_str(&cmd.args[2])?;
                 let result = self.set(key, value, data_type);
@@ -41,7 +42,7 @@ impl DataManager {
             }
             CommandNames::GET => {
                 self.check_auth(&session, Permissions::GET)?;
-                let key = cmd.args[0].clone();
+                let key = Key::new(cmd.args[0].clone());
                 let result = self.get(key);
                 match result {
                     Ok(value) => Ok((value, session)),
@@ -145,11 +146,20 @@ impl DataManager {
             CommandNames::LIST_KEYS => {
                 self.check_auth(&session, Permissions::GET)?;
 
-                let result = self.list_keys();
+                let key = cmd.args[0].clone();
 
-                match result {
-                    Ok(keys) => Ok((keys, session)),
-                    Err(e) => Err(e),
+                if key == "." {
+                    return Ok((self.data.list_keys()?, session));
+                } else {
+                    let store = self.data.get_store(key.clone());
+                    match store {
+                        Ok(store) => {
+                            return Ok((store.list_keys()?, session));
+                        }
+                        Err(_) => {
+                            return Err("Invalid store".to_string());
+                        }
+                    }
                 }
             }
         }
@@ -176,16 +186,27 @@ impl DataManager {
         Ok(())
     }
 
-    fn set(&mut self, key: String, value: String, data_type: DataTypes) -> Result<String, String> {
-        self.data.set_value(key, value, data_type)?;
+    fn set(&mut self, key: Key, value: String, data_type: DataTypes) -> Result<String, String> {
+        self.data.set(key, value, data_type)?;
         Ok("OK".to_string())
     }
 
-    fn get(&self, key: String) -> Result<String, String> {
-        let value_result = self.data.get(key);
-        match value_result {
-            Ok(value) => Ok(value),
-            Err(e) => Err(e),
+    fn get(&mut self, key: Key) -> Result<String, String> {
+        if !key.is_value_key() {
+            return Err("Invalid key".to_string());
+        }
+        if key.store.is_none() {
+            return self.data.get(key.key.unwrap());
+        } else {
+            let store = self.data.get_store(key.store.clone().unwrap());
+            match store {
+                Ok(store) => {
+                    return store.get(key.get_next_key().to_str());
+                }
+                Err(_) => {
+                    return Err("Invalid store".to_string());
+                }
+            }
         }
     }
 
@@ -222,10 +243,5 @@ impl DataManager {
     fn create_store(&mut self, store_name: String) -> Result<String, String> {
         self.data.set_store(store_name)?;
         Ok("OK".to_string())
-    }
-
-    fn list_keys(&self) -> Result<String, String> {
-        let keys = self.data.list_keys()?;
-        Ok(keys.join(","))
     }
 }

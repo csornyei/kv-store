@@ -22,3 +22,6 @@ mod auth_manager_tests;
 
 #[cfg(test)]
 mod key_tests;
+
+#[cfg(test)]
+mod command_tests;

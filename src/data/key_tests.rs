@@ -158,56 +158,56 @@ mod key_get_next_key {
 }
 
 #[cfg(test)]
-mod key_valid_get_key {
+mod key_is_value_key {
     use super::Key;
 
     #[test]
-    fn test_key_valid_get_key_no_key() {
+    fn test_key_is_value_key_no_key() {
         let key = Key {
             store: Some("store".to_string()),
             path: Some("path".to_string()),
             key: None,
         };
 
-        assert_eq!(key.valid_get_key(), false);
+        assert_eq!(key.is_value_key(), false);
     }
 
     #[test]
-    fn test_key_valid_get_key_with_key() {
+    fn test_key_is_value_key_with_key() {
         let key = Key {
             store: Some("store".to_string()),
             path: Some("path".to_string()),
             key: Some("key".to_string()),
         };
 
-        assert_eq!(key.valid_get_key(), true);
+        assert_eq!(key.is_value_key(), false);
     }
 
     #[test]
-    fn test_key_valid_get_key_default_store() {
+    fn test_key_is_value_key_default_store() {
         let key = Key::new(".".to_string());
 
-        assert_eq!(key.valid_get_key(), false);
+        assert_eq!(key.is_value_key(), false);
     }
 
     #[test]
-    fn test_key_valid_get_key_no_store() {
+    fn test_key_is_value_key_no_store() {
         let key = Key::new("key".to_string());
 
-        assert_eq!(key.valid_get_key(), true);
+        assert_eq!(key.is_value_key(), true);
     }
 
     #[test]
-    fn test_key_valid_get_key_with_store() {
+    fn test_key_is_value_key_with_store() {
         let key = Key::new("store:key".to_string());
 
-        assert_eq!(key.valid_get_key(), true);
+        assert_eq!(key.is_value_key(), false);
     }
 
     #[test]
-    fn test_key_valid_get_key_with_path() {
+    fn test_key_is_value_key_with_path() {
         let key = Key::new("default_store:second_store:key".to_string());
 
-        assert_eq!(key.valid_get_key(), true);
+        assert_eq!(key.is_value_key(), false);
     }
 }

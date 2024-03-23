@@ -135,7 +135,7 @@ impl DataManager {
             }
             CommandNames::CREATE_STORE => {
                 self.check_auth(&session, Permissions::SET)?;
-                let store_name = cmd.args[0].clone();
+                let store_name = Key::new(cmd.args[0].clone());
 
                 let result = self.create_store(store_name);
                 match result {
@@ -240,7 +240,7 @@ impl DataManager {
         self.auth_manager.delete_user(user_name)
     }
 
-    fn create_store(&mut self, store_name: String) -> Result<String, String> {
+    fn create_store(&mut self, store_name: Key) -> Result<String, String> {
         self.data.set_store(store_name)?;
         Ok("OK".to_string())
     }

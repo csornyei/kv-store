@@ -135,6 +135,12 @@ fn validate_create_store_args(args: Vec<String>) -> Result<(), Error> {
             "Invalid number of arguments",
         ));
     }
+    if args[0] == "." {
+        return Err(Error::new(
+            ErrorKind::InvalidInput,
+            format!("Forbidden store name! {}", args[0]),
+        ));
+    }
     Ok(())
 }
 

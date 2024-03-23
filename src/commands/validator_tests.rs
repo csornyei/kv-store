@@ -198,3 +198,31 @@ fn test_validate_revoke_args() {
     assert_eq!(command.name, CommandNames::REVOKE);
     assert_eq!(command.args, vec!["username1", "15"]);
 }
+
+#[test]
+fn test_validate_create_store_args() {
+    let command = Command::from_str("CREATE_STORE store").unwrap();
+
+    assert_eq!(command.name, CommandNames::CREATE_STORE);
+    assert_eq!(command.args, vec!["store"]);
+
+    match Command::from_str("CREATE_STORE") {
+        Ok(_) => panic!("Expected error"),
+        Err(e) => assert_eq!(e.to_string(), "Invalid number of arguments"),
+    }
+
+    match Command::from_str("CREATE_STORE store1 store2") {
+        Ok(_) => panic!("Expected error"),
+        Err(e) => assert_eq!(e.to_string(), "Invalid number of arguments"),
+    }
+
+    match Command::from_str("CREATE_STORE .") {
+        Ok(_) => panic!("Expected error"),
+        Err(e) => assert_eq!(e.to_string(), "Forbidden store name! ."),
+    }
+
+    let command = Command::from_str("CREATE_STORE store1:store2").unwrap();
+
+    assert_eq!(command.name, CommandNames::CREATE_STORE);
+    assert_eq!(command.args, vec!["store1:store2"]);
+}

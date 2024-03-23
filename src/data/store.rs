@@ -7,7 +7,7 @@ use super::{data_value::DataValue, key::Key, DataTypes};
 pub trait StoreManager: Data {
     fn get_name(&self) -> String;
 
-    fn set_store(&mut self, store_name: String) -> Result<String, String>;
+    fn set_store(&mut self, store_name: Key) -> Result<String, String>;
 
     fn list_keys(&self) -> Result<String, String>;
 
@@ -83,16 +83,23 @@ impl StoreManager for Store {
         self.name.clone()
     }
 
-    fn set_store(&mut self, store_name: String) -> Result<String, String> {
-        if self.data.contains_key(&store_name) {
-            return Err("Key already exists".to_string());
+    fn set_store(&mut self, store_name: Key) -> Result<String, String> {
+        if store_name.is_value_key() {
+            let store_key = store_name.key.unwrap();
+            if self.stores.contains_key(&store_key) {
+                return Err("Key already exists".to_string());
+            }
+            let new_store = Store::new(store_key.clone());
+
+            self.stores.insert(store_key, new_store);
+
+            return Ok("OK".to_string());
+        } else {
+            let store_key = store_name.store.clone().unwrap();
+            let store = self.get_store(store_key.clone())?;
+            let store_name = store_name.get_next_key();
+            return store.set_store(store_name);
         }
-
-        let new_store = Store::new(store_name.clone());
-
-        self.stores.insert(store_name, new_store);
-
-        Ok("OK".to_string())
     }
 
     fn list_keys(&self) -> Result<String, String> {

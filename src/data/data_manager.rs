@@ -1,7 +1,6 @@
 use super::{
     auth_manager::{AuthManager, Permissions},
     data_type::DataTypes,
-    data_value::Data,
     key::Key,
     store::{Store, StoreManager},
 };
@@ -68,7 +67,7 @@ impl DataManager {
             }
             CommandNames::DEL => {
                 self.check_auth(&session, Permissions::DEL)?;
-                let key = cmd.args[0].clone();
+                let key = Key::new(cmd.args[0].clone());
                 let result = self.del(key);
                 match result {
                     Ok(_) => Ok(("OK".to_string(), session)),
@@ -212,7 +211,7 @@ impl DataManager {
         self.data.get(key)
     }
 
-    fn del(&mut self, key: String) -> Result<String, String> {
+    fn del(&mut self, key: Key) -> Result<String, String> {
         match self.data.del(key) {
             Ok(_) => Ok("OK".to_string()),
             Err(_) => Err("Key not found".to_string()),

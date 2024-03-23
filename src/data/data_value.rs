@@ -16,7 +16,7 @@ pub trait Data {
 
     fn get_value(&self, key: Key) -> Result<String, String>;
 
-    fn del(&mut self, key: String) -> Result<String, String>;
+    fn del_value(&mut self, key: &Key) -> Result<String, String>;
 }
 
 #[derive(Serialize, Deserialize)]
@@ -54,7 +54,7 @@ impl Data for DataValue {
         Ok(self.value.clone())
     }
 
-    fn del(&mut self, _key: String) -> Result<String, String> {
+    fn del_value(&mut self, _key: &Key) -> Result<String, String> {
         self.value = "".to_string();
         Ok("Deleted".to_string())
     }

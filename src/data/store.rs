@@ -14,6 +14,8 @@ pub trait StoreManager: Data {
     fn list_keys(&self) -> Result<String, String>;
 
     fn get_store(&mut self, store_name: String) -> Result<&mut Store, String>;
+
+    fn del_store(&mut self, store_name: &Key) -> Result<String, String>;
 }
 
 #[derive(Serialize, Deserialize)]
@@ -57,6 +59,25 @@ impl Store {
 
         store.get(key)
     }
+
+    pub fn del(&mut self, key: Key) -> Result<String, String> {
+        if key.is_value_key() {
+            return match self.del_value(&key) {
+                Ok(_) => Ok("OK".to_string()),
+                Err(_) => match self.del_store(&key) {
+                    Ok(_) => Ok("OK".to_string()),
+                    Err(_) => Err("Key not found".to_string()),
+                },
+            };
+        }
+
+        let store = key.store.clone().unwrap();
+        let store: &mut Store = self.get_store(store)?;
+
+        let key = key.get_next_key();
+
+        store.del(key)
+    }
 }
 
 impl Data for Store {
@@ -91,16 +112,13 @@ impl Data for Store {
         Ok("OK".to_string())
     }
 
-    fn del(&mut self, key: String) -> Result<String, String> {
-        if self.data.contains_key(key.as_str()) {
-            self.data.remove(&key);
+    fn del_value(&mut self, key: &Key) -> Result<String, String> {
+        let value_key = key.key.clone().unwrap();
+        if self.data.contains_key(&value_key) {
+            self.data.remove(&value_key);
             return Ok("OK".to_string());
         }
-        if self.stores.contains_key(key.as_str()) {
-            self.stores.remove(&key);
-            return Ok("OK".to_string());
-        }
-        Err("Key not found".to_string())
+        return Err("Key not found".to_string());
     }
 }
 
@@ -142,5 +160,14 @@ impl StoreManager for Store {
             return Ok(self.stores.get_mut(&store_name).unwrap());
         }
         Err("Store not found".to_string())
+    }
+
+    fn del_store(&mut self, store_name: &Key) -> Result<String, String> {
+        let store_key = store_name.key.clone().unwrap();
+        if self.stores.contains_key(&store_key) {
+            self.stores.remove(&store_key);
+            return Ok("OK".to_string());
+        }
+        return Err("Key not found".to_string());
     }
 }

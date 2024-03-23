@@ -16,9 +16,6 @@ mod data_tests_utils;
 mod auth_command_tests;
 
 #[cfg(test)]
-mod data_command_tests;
-
-#[cfg(test)]
 mod auth_manager_tests;
 
 #[cfg(test)]

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::data::data_value::Data;
+use crate::{config::Config, data::data_value::Data};
 
 use super::{data_value::DataValue, key::Key, DataTypes};
 
@@ -29,6 +29,14 @@ impl Store {
     pub fn new(name: String) -> Store {
         Store {
             name,
+            data: HashMap::new(),
+            stores: HashMap::new(),
+        }
+    }
+
+    pub fn from_config(_config: &Config) -> Store {
+        Store {
+            name: ".".to_string(),
             data: HashMap::new(),
             stores: HashMap::new(),
         }

@@ -1,6 +1,5 @@
 extern crate kvstore;
 
-use kvstore::persistence::Persistence;
 use std::io::{Read, Write};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -12,7 +11,7 @@ use tokio::{
 use lazy_static::lazy_static;
 use tempfile::NamedTempFile;
 
-use kvstore::data::{DataManager, Store};
+use kvstore::data::Store;
 use kvstore::start_server;
 
 const ADDRESS: &str = "127.0.0.1";
@@ -35,10 +34,6 @@ async fn start_test_server(port: u16, file_path: Option<String>) -> tokio::task:
     // };
     tokio::spawn(async move {
         let data = Arc::new(Mutex::new(Store::new(".".to_string())));
-        // let data = Arc::new(Mutex::new(
-        //     DataManager::new("admin".to_string(), "Password4".to_string(), persistence)
-        //         .expect("Failed to create data manager!"),
-        // ));
         start_server(ADDRESS, port, data).await.unwrap();
     })
 }

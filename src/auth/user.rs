@@ -34,11 +34,8 @@ impl User {
     }
 
     pub fn verify_password(&self, password: &str) -> Result<bool, Error> {
-        println!("Verify_password: {}", password);
         let argon2 = Argon2::default();
         let parsed_hash = PasswordHash::new(&self.password)?;
-
-        println!("Parsed hash: {:?}", parsed_hash);
 
         match argon2.verify_password(password.as_bytes(), &parsed_hash) {
             Ok(_) => Ok(true),

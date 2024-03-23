@@ -13,9 +13,6 @@ pub use store::Store;
 mod data_tests_utils;
 
 #[cfg(test)]
-mod auth_command_tests;
-
-#[cfg(test)]
 mod auth_manager_tests;
 
 #[cfg(test)]

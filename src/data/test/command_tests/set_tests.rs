@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use crate::{
     commands::Command,
-    data::{data_tests_utils::*, DataTypes},
+    data::{test::data_tests_utils::*, DataTypes},
     session::Session,
 };
 
@@ -112,7 +112,7 @@ fn test_command_set_permission() {
     let mut data = create_data_manager();
     let admin_session = create_session();
 
-    let cmd = Command::from_str("CREATE_USER user Password4 SET").unwrap();
+    let cmd = Command::from_str("CREATE_USER user Password4").unwrap();
 
     data.handle_command(cmd, admin_session.clone()).unwrap();
 

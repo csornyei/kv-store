@@ -1,4 +1,4 @@
-use super::auth_manager::*;
+use crate::data::auth_manager::*;
 
 #[test]
 fn test_permission_from_u8() {

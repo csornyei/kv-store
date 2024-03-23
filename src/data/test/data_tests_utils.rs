@@ -1,5 +1,4 @@
-use super::data_manager::*;
-use crate::{persistence::Persistence, session::Session};
+use crate::{data::data_manager::DataManager, persistence::Persistence, session::Session};
 
 pub fn create_data_manager() -> DataManager {
     DataManager::new(

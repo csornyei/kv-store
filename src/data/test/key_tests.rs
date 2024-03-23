@@ -1,4 +1,4 @@
-use super::key::Key;
+use crate::data::key::Key;
 
 #[cfg(test)]
 mod new_key {

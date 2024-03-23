@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::{commands::Command, data::data_tests_utils::*, session::Session};
+use crate::{commands::Command, data::test::data_tests_utils::*, session::Session};
 
 #[test]
 fn test_command_delete_user() {

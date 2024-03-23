@@ -10,13 +10,4 @@ pub use data_type::*;
 pub use store::Store;
 
 #[cfg(test)]
-mod data_tests_utils;
-
-#[cfg(test)]
-mod auth_manager_tests;
-
-#[cfg(test)]
-mod key_tests;
-
-#[cfg(test)]
-mod command_tests;
+mod test;

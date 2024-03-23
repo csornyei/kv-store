@@ -1,6 +1,8 @@
 use std::{fmt::Display, str::FromStr};
 
-#[derive(PartialEq, Clone, Copy, Debug)]
+use serde::{Deserialize, Serialize};
+
+#[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum DataTypes {
     STRING,
     INT,

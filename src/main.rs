@@ -26,7 +26,7 @@ struct Args {
     port: u16,
 
     // Persistence type
-    #[clap(short, long, default_value = "in_memory")]
+    #[clap(short = 'T', long, default_value = "in_memory")]
     persistence: String,
 
     // JSON file path to persist data

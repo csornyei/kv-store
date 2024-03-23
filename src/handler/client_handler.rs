@@ -1,5 +1,6 @@
 use crate::commands::Command;
 use crate::data::DataManager;
+use crate::persistence::PersistenceType;
 use crate::session::Session;
 use std::{str::FromStr, sync::Arc};
 use tokio::sync::Mutex;
@@ -51,7 +52,15 @@ impl ClientHandler {
         command: Command,
     ) -> Result<(String, Session), String> {
         let mut data = data.lock().await;
-        data.handle_command(command, session)
+        let result = data.handle_command(command, session)?;
+        if data.persistence.get_type() == PersistenceType::JsonFile {
+            match data.save_to_file() {
+                Ok(_) => Ok(result),
+                Err(e) => Err(e),
+            }
+        } else {
+            Ok(result)
+        }
     }
 
     fn handle_command_result(

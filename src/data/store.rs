@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
+
 use crate::data::data_value::Data;
 
 use super::{data_value::DataValue, key::Key, DataTypes};
@@ -14,6 +16,7 @@ pub trait StoreManager: Data {
     fn get_store(&mut self, store_name: String) -> Result<&mut Store, String>;
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Store {
     name: String,
     pub data: HashMap<String, DataValue>,

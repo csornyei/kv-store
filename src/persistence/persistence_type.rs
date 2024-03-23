@@ -1,5 +1,8 @@
 use std::str::FromStr;
 
+use crate::data::Store;
+
+#[derive(Clone, PartialEq)]
 pub enum PersistenceType {
     InMemory,
     JsonFile,
@@ -34,6 +37,45 @@ impl Persistence {
         Persistence {
             persistence_type: PersistenceType::JsonFile,
             file_path: Some(file_path),
+        }
+    }
+
+    pub fn get_type(&self) -> PersistenceType {
+        self.persistence_type.clone()
+    }
+
+    pub fn get_path(&self) -> Option<String> {
+        self.file_path.clone()
+    }
+
+    pub fn save_store(&self, data: &Store) -> Result<(), String> {
+        match self.persistence_type {
+            PersistenceType::JsonFile => {
+                let json = serde_json::to_string(data).unwrap();
+                match self.file_path.clone() {
+                    Some(path) => std::fs::write(path, json).unwrap(),
+                    None => return Err("No file path provided".to_string()),
+                }
+            }
+            _ => return Err("Invalid persistence type".to_string()),
+        }
+        Ok(())
+    }
+
+    pub fn load_store(&self) -> Result<Store, String> {
+        match self.persistence_type {
+            PersistenceType::JsonFile => match self.file_path.clone() {
+                Some(path) => {
+                    let json = std::fs::read(path).unwrap();
+                    if json.is_empty() {
+                        return Ok(Store::new(".".to_string()));
+                    }
+                    let store: Store = serde_json::from_slice(&json).unwrap();
+                    Ok(store)
+                }
+                None => Err("No file path provided".to_string()),
+            },
+            PersistenceType::InMemory => Ok(Store::new(".".to_string())),
         }
     }
 }

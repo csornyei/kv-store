@@ -1,4 +1,4 @@
-use crate::data::auth_manager::*;
+use crate::auth::{Permissions, User};
 
 #[test]
 fn test_permission_from_u8() {
@@ -70,7 +70,7 @@ fn test_permission_from_u8() {
 
 #[test]
 fn test_user_to_string() {
-    let user = User::new("user".to_string(), "password".to_string(), 0);
+    let user = User::new("user".to_string(), "password".to_string(), 0).unwrap();
 
     assert_eq!(user.to_string(), "User: user Permissions: 0");
 }

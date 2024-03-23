@@ -1,13 +1,13 @@
 use super::{
-    auth_manager::{AuthManager, Permissions},
     data_type::DataTypes,
     key::Key,
     store::{Store, StoreManager},
 };
-use crate::session::Session;
 use crate::{
+    auth::{AuthManager, Permissions},
     commands::{Command, CommandNames},
     persistence::Persistence,
+    session::Session,
 };
 use std::str::FromStr;
 

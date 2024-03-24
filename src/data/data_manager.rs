@@ -8,6 +8,7 @@ use super::{
 use crate::{
     auth::{AuthManager, Permissions},
     commands::{Command, CommandNames},
+    config::Config,
     persistence::Persistence,
     session::Session,
 };
@@ -20,11 +21,29 @@ pub struct DataManager {
 }
 
 impl DataManager {
-    pub fn new(data: Arc<Mutex<Store>>) -> Result<Self, String> {
-        let auth_manager = AuthManager::new("admin".to_string(), "Password4".to_string(), 255)?;
+    pub async fn new(
+        data: Arc<Mutex<Store>>,
+        config: Arc<Mutex<Config>>,
+    ) -> Result<DataManager, String> {
+        let mut auth_manager = AuthManager::new(Arc::clone(&data)).await?;
+
+        let admin_user = config.lock().await.get_admin_user().unwrap();
+
+        match auth_manager
+            .create_user(
+                admin_user.username,
+                admin_user.password,
+                admin_user.permissions,
+            )
+            .await
+        {
+            Ok(_) => {}
+            Err(e) => println!("Error creating admin user: {}", e),
+        }
+
         let persistence = Persistence::new_in_memory();
         Ok(DataManager {
-            data,
+            data: data.clone(),
             auth_manager,
             persistence,
         })

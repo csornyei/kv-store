@@ -1,4 +1,5 @@
 use crate::commands::Command;
+use crate::config::Config;
 use crate::data::{DataManager, Store};
 use crate::persistence::PersistenceType;
 use crate::session::Session;
@@ -12,11 +13,16 @@ use tokio::{
 pub struct ClientHandler {
     socket: TcpStream,
     data: Arc<Mutex<Store>>,
+    config: Arc<Mutex<Config>>,
 }
 
 impl<'a> ClientHandler {
-    pub fn new(socket: TcpStream, data: Arc<Mutex<Store>>) -> Self {
-        Self { socket, data }
+    pub fn new(socket: TcpStream, data: Arc<Mutex<Store>>, config: Arc<Mutex<Config>>) -> Self {
+        Self {
+            socket,
+            data,
+            config,
+        }
     }
 
     fn parse_line(&self, buf: [u8; 1024], line_length: usize) -> String {
@@ -90,10 +96,10 @@ impl<'a> ClientHandler {
         let _ = self.socket.write_all(results_string.as_bytes()).await;
     }
 
-    async fn handle_client(mut self, data: Arc<Mutex<Store>>) {
+    async fn handle_client(mut self, data: Arc<Mutex<Store>>, config: Arc<Mutex<Config>>) {
         let mut buf = [0; 1024];
         let mut session = Session::new();
-        let mut data_manager = DataManager::new(data).unwrap();
+        let mut data_manager = DataManager::new(data, config).await.unwrap();
 
         loop {
             match self.socket.read(&mut buf).await {
@@ -150,8 +156,9 @@ impl<'a> ClientHandler {
 
     pub async fn spawn_handler(self) {
         let data = Arc::clone(&self.data);
+        let config = Arc::clone(&self.config);
         tokio::spawn(async move {
-            self.handle_client(data).await;
+            self.handle_client(data, config).await;
         });
     }
 }

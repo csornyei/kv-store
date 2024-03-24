@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{auth::User, persistence::Persistence};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize)]
 pub struct ServerConfig {
     pub address: String,
     pub port: u16,
@@ -19,7 +19,7 @@ impl Default for ServerConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize)]
 pub struct AdminConfig {
     pub username: String,
     pub password: String,
@@ -34,7 +34,7 @@ impl Default for AdminConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize)]
 pub struct Config {
     pub server: ServerConfig,
     pub persistence: Persistence,

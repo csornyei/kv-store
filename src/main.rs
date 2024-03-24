@@ -24,12 +24,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let store = if config.persistence.get_type() == PersistenceType::JsonFile {
         config.persistence.load_store()?
     } else {
-        Store::from_config(&config)
+        Store::new(".".to_string())
     };
 
     let data = Arc::new(Mutex::new(store));
 
-    start_server(&config.server.address, config.server.port, data).await?;
+    start_server(config, data).await?;
 
     Ok(())
 }

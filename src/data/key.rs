@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct Key {
     pub store: Option<String>,
     pub path: Option<String>,
@@ -72,5 +73,13 @@ impl Key {
 
     pub fn is_value_key(&self) -> bool {
         self.store.is_none() && self.path.is_none()
+    }
+
+    pub fn get_store_key(&self) -> Key {
+        let mut key = self.clone();
+        key.path = None;
+        key.key = key.store.clone();
+        key.store = None;
+        key
     }
 }

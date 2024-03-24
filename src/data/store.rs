@@ -13,7 +13,7 @@ pub trait StoreManager: Data {
 
     fn list_keys(&self) -> Result<String, String>;
 
-    fn get_store(&mut self, store_name: String) -> Result<&mut Store, String>;
+    fn get_store(&mut self, store_name: Key) -> Result<&mut Store, String>;
 
     fn del_store(&mut self, store_name: &Key) -> Result<String, String>;
 }
@@ -34,21 +34,13 @@ impl Store {
         }
     }
 
-    pub fn from_config(_config: &Config) -> Store {
-        Store {
-            name: ".".to_string(),
-            data: HashMap::new(),
-            stores: HashMap::new(),
-        }
-    }
-
     pub fn set(&mut self, key: Key, value: String, data_type: DataTypes) -> Result<String, String> {
         if key.is_value_key() {
             return self.set_value(key, value, data_type);
         }
 
         let store = key.store.clone().unwrap();
-        let store: &mut Store = self.get_store(store)?;
+        let store: &mut Store = self.get_store(key.get_store_key())?;
 
         let key = key.get_next_key();
 
@@ -61,7 +53,7 @@ impl Store {
         }
 
         let store = key.store.clone().unwrap();
-        let store: &mut Store = self.get_store(store)?;
+        let store: &mut Store = self.get_store(key.get_store_key())?;
 
         let key = key.get_next_key();
 
@@ -80,7 +72,7 @@ impl Store {
         }
 
         let store = key.store.clone().unwrap();
-        let store: &mut Store = self.get_store(store)?;
+        let store: &mut Store = self.get_store(key.get_store_key())?;
 
         let key = key.get_next_key();
 
@@ -139,7 +131,7 @@ impl StoreManager for Store {
         if store_name.is_value_key() {
             let store_key = store_name.key.unwrap();
             if self.stores.contains_key(&store_key) {
-                return Err("Key already exists".to_string());
+                return Err(format!("Key already exists: {}", store_key));
             }
             let new_store = Store::new(store_key.clone());
 
@@ -147,8 +139,7 @@ impl StoreManager for Store {
 
             return Ok("OK".to_string());
         } else {
-            let store_key = store_name.store.clone().unwrap();
-            let store = self.get_store(store_key.clone())?;
+            let store = self.get_store(store_name.get_store_key())?;
             let store_name = store_name.get_next_key();
             return store.set_store(store_name);
         }
@@ -163,11 +154,18 @@ impl StoreManager for Store {
             .join("\n"))
     }
 
-    fn get_store(&mut self, store_name: String) -> Result<&mut Store, String> {
-        if self.stores.contains_key(&store_name) {
-            return Ok(self.stores.get_mut(&store_name).unwrap());
+    fn get_store(&mut self, store_name: Key) -> Result<&mut Store, String> {
+        if store_name.is_value_key() {
+            let store_key = store_name.key.clone().unwrap();
+            if self.stores.contains_key(&store_key) {
+                return Ok(self.stores.get_mut(&store_key).unwrap());
+            }
+            return Err("Key not found".to_string());
         }
-        Err("Store not found".to_string())
+        let store_key = store_name.get_store_key();
+        let store = self.get_store(store_key)?;
+        let store_name = store_name.get_next_key();
+        return store.get_store(store_name);
     }
 
     fn del_store(&mut self, store_name: &Key) -> Result<String, String> {

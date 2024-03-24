@@ -3,11 +3,20 @@ use argon2::{
     Argon2,
 };
 
+use crate::data::Key;
+
 #[derive(Debug)]
 pub struct User {
     pub username: String,
     pub password: String,
     pub permissions: u8,
+}
+
+pub struct UserKeys {
+    pub user_store_key: Key,
+    pub username_key: Key,
+    pub password_key: Key,
+    pub permissions_key: Key,
 }
 
 impl User {
@@ -48,6 +57,15 @@ impl User {
             username: self.username.clone(),
             password: self.password.clone(),
             permissions,
+        }
+    }
+
+    pub fn get_user_keys(&self) -> UserKeys {
+        UserKeys {
+            user_store_key: Key::new(format!("_auth:users:{}", self.username)),
+            username_key: Key::new(format!("_auth:users:{}:username", self.username)),
+            password_key: Key::new(format!("_auth:users:{}:password", self.username)),
+            permissions_key: Key::new(format!("_auth:users:{}:permissions", self.username)),
         }
     }
 }

@@ -115,7 +115,7 @@ async fn test_command_get_permission() {
 }
 
 #[tokio::test]
-async fn test_command_set_check_auth() {
+async fn test_command_get_check_auth() {
     let mut data = create_data_manager().await;
     let session = Session::new();
 
@@ -142,4 +142,39 @@ async fn test_command_set_check_auth() {
     let (result, _) = data.handle_command(cmd, session).await.unwrap();
 
     assert_eq!(result, "value".to_string());
+}
+
+#[tokio::test]
+async fn test_command_get_whole_store() {
+    let mut data = create_data_manager().await;
+    let admin_session = create_session();
+
+    data.handle_command(
+        Command::from_str("CREATE_STORE test_store_name").unwrap(),
+        create_session(),
+    )
+    .await
+    .unwrap();
+
+    data.handle_command(
+        Command::from_str("SET test_store_name:key1 value1").unwrap(),
+        admin_session.clone(),
+    )
+    .await
+    .unwrap();
+
+    data.handle_command(
+        Command::from_str("SET test_store_name:key2 100 INT").unwrap(),
+        admin_session.clone(),
+    )
+    .await
+    .unwrap();
+
+    let cmd = Command::from_str("GET test_store_name:*").unwrap();
+
+    let (result, _) = data.handle_command(cmd, admin_session).await.unwrap();
+
+    assert!(result.contains("key1: value1 (STRING)"));
+    assert!(result.contains("key2: 100 (INT)"));
+    assert!(result.contains("test_store_name"));
 }

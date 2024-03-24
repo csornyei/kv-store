@@ -9,7 +9,7 @@ use crate::{
     auth::{AuthManager, Permissions},
     commands::{Command, CommandNames},
     config::Config,
-    persistence::Persistence,
+    persistence::{Persistence, PersistenceType},
     session::Session,
 };
 use std::{str::FromStr, sync::Arc};
@@ -52,6 +52,9 @@ impl DataManager {
 
     pub async fn save_to_file(&self) -> Result<(), String> {
         let data = &self.data.lock().await;
+        if self.persistence.get_type() == PersistenceType::InMemory {
+            return Ok(());
+        }
         match self.persistence.save_store(data) {
             Ok(_) => Ok(()),
             Err(e) => Err(e),

@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 
 use crate::data::DataTypes;
 
@@ -57,5 +58,11 @@ impl Data for DataValue {
     fn del_value(&mut self, _key: &Key) -> Result<String, String> {
         self.value = "".to_string();
         Ok("Deleted".to_string())
+    }
+}
+
+impl Display for DataValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} ({})", self.value, self.data_type)
     }
 }

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 use serde::{Deserialize, Serialize};
 
@@ -48,6 +48,9 @@ impl Store {
 
     pub fn get(&mut self, key: Key) -> Result<String, String> {
         if key.is_value_key() {
+            if key.key.clone().unwrap() == "*".to_string() {
+                return Ok(self.to_string());
+            }
             return self.get_value(key);
         }
 
@@ -172,5 +175,15 @@ impl StoreManager for Store {
             return Ok("OK".to_string());
         }
         return Err("Key not found".to_string());
+    }
+}
+
+impl Display for Store {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)?;
+        for (key, value) in &self.data {
+            write!(f, "\n{}: {}", key, value)?;
+        }
+        Ok(())
     }
 }

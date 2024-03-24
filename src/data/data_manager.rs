@@ -42,7 +42,7 @@ impl DataManager {
         //     Err(e) => println!("Error creating admin user: {}", e),
         // }
 
-        let persistence = Persistence::new_in_memory();
+        let persistence = config.lock().await.persistence.clone();
         Ok(DataManager {
             data: data.clone(),
             auth_manager,

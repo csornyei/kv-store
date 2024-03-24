@@ -22,7 +22,7 @@ impl FromStr for PersistenceType {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Persistence {
     persistence_type: PersistenceType,
     file_path: Option<String>,

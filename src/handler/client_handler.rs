@@ -147,7 +147,7 @@ impl<'a> ClientHandler {
                             }
                         }
                     }
-
+                    data_manager.save_to_file().await.unwrap();
                     self.write_results(results).await;
                 }
             }

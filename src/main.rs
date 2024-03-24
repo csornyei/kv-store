@@ -1,8 +1,6 @@
-use kvstore::persistence::PersistenceType;
+use kvstore::config::Config;
 use kvstore::start_server;
-use kvstore::{config::Config, data::Store};
-use std::{error::Error, sync::Arc};
-use tokio::sync::Mutex;
+use std::error::Error;
 
 use clap::Parser;
 
@@ -21,15 +19,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let config = Config::load(args.config_path);
 
-    let store = if config.persistence.get_type() == PersistenceType::JsonFile {
-        config.persistence.load_store()?
-    } else {
-        Store::new(".".to_string())
-    };
-
-    let data = Arc::new(Mutex::new(store));
-
-    start_server(config, data).await?;
+    start_server(config).await?;
 
     Ok(())
 }

@@ -11,7 +11,7 @@ use tokio::{
 use lazy_static::lazy_static;
 use tempfile::NamedTempFile;
 
-use kvstore::{config::Config, data::Store, persistence::Persistence, start_server};
+use kvstore::{config::Config, persistence::Persistence, start_server};
 
 const ADDRESS: &str = "127.0.0.1";
 
@@ -36,8 +36,7 @@ async fn start_test_server(port: u16, file_path: Option<String>) -> tokio::task:
 
         config.add_server_config(ADDRESS.to_string(), port);
 
-        let data = Arc::new(Mutex::new(Store::new(".".to_string())));
-        start_server(config, data).await.unwrap();
+        start_server(config).await.unwrap();
     })
 }
 

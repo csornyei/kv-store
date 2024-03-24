@@ -9,15 +9,21 @@ pub mod session;
 use config::Config;
 use data::Store;
 use handler::ClientHandler;
+use persistence::PersistenceType;
 use std::sync::Arc;
 
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 
-pub async fn start_server(
-    config: Config,
-    data: Arc<Mutex<Store>>,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn start_server(config: Config) -> Result<(), Box<dyn std::error::Error>> {
+    let store = if config.persistence.get_type() == PersistenceType::JsonFile {
+        config.persistence.load_store()?
+    } else {
+        Store::new(".".to_string())
+    };
+
+    let data = Arc::new(Mutex::new(store));
+
     let listener = TcpListener::bind(config.get_server_address()).await?;
     println!("Key-Value Server is listening");
 

@@ -50,12 +50,16 @@ impl Config {
         }
     }
 
-    pub fn new_with_server(server: ServerConfig) -> Self {
-        Config {
-            server,
-            persistence: Persistence::new_in_memory(),
-            admin: AdminConfig::default(),
-        }
+    pub fn add_server_config(&mut self, address: String, port: u16) {
+        self.server = ServerConfig { address, port };
+    }
+
+    pub fn add_persistence_config(&mut self, persistence: Persistence) {
+        self.persistence = persistence;
+    }
+
+    pub fn add_admin_config(&mut self, username: String, password: String) {
+        self.admin = AdminConfig { username, password };
     }
 
     pub fn load(path: String) -> Self {

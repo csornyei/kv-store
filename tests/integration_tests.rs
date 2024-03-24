@@ -1,6 +1,5 @@
 extern crate kvstore;
 
-use kvstore::config::{Config, ServerConfig};
 use std::io::{Read, Write};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -12,8 +11,7 @@ use tokio::{
 use lazy_static::lazy_static;
 use tempfile::NamedTempFile;
 
-use kvstore::data::Store;
-use kvstore::start_server;
+use kvstore::{config::Config, data::Store, persistence::Persistence, start_server};
 
 const ADDRESS: &str = "127.0.0.1";
 
@@ -29,17 +27,16 @@ async fn get_next_port() -> u16 {
 }
 
 async fn start_test_server(port: u16, file_path: Option<String>) -> tokio::task::JoinHandle<()> {
-    // let persistence = match file_path {
-    //     Some(path) => Persistence::new_json_file(path),
-    //     None => Persistence::new_in_memory(),
-    // };
-    let server_config = ServerConfig {
-        address: ADDRESS.to_string(),
-        port,
-    };
     tokio::spawn(async move {
+        let mut config = Config::new();
+
+        if let Some(path) = file_path {
+            config.add_persistence_config(Persistence::new_json_file(path));
+        }
+
+        config.add_server_config(ADDRESS.to_string(), port);
+
         let data = Arc::new(Mutex::new(Store::new(".".to_string())));
-        let config = Config::new_with_server(server_config);
         start_server(config, data).await.unwrap();
     })
 }

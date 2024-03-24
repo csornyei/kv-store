@@ -119,7 +119,7 @@ async fn test_command_del_delete_store() {
 
     let result_err = data.handle_command(cmd, session).await.unwrap_err();
 
-    assert_eq!(result_err, "Store not found".to_string());
+    assert_eq!(result_err, "Key not found".to_string());
 }
 
 #[tokio::test]
@@ -167,7 +167,7 @@ async fn test_command_del_delete_embedded_store() {
 
     let result_err = data.handle_command(cmd, session).await.unwrap_err();
 
-    assert_eq!(result_err, "Store not found".to_string());
+    assert_eq!(result_err, "Key not found".to_string());
 }
 
 #[tokio::test]

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{config::Config, data::data_value::Data};
+use crate::data::data_value::Data;
 
 use super::{data_value::DataValue, key::Key, DataTypes};
 
@@ -39,7 +39,6 @@ impl Store {
             return self.set_value(key, value, data_type);
         }
 
-        let store = key.store.clone().unwrap();
         let store: &mut Store = self.get_store(key.get_store_key())?;
 
         let key = key.get_next_key();
@@ -52,7 +51,6 @@ impl Store {
             return self.get_value(key);
         }
 
-        let store = key.store.clone().unwrap();
         let store: &mut Store = self.get_store(key.get_store_key())?;
 
         let key = key.get_next_key();
@@ -71,7 +69,6 @@ impl Store {
             };
         }
 
-        let store = key.store.clone().unwrap();
         let store: &mut Store = self.get_store(key.get_store_key())?;
 
         let key = key.get_next_key();

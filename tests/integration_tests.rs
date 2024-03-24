@@ -271,7 +271,8 @@ async fn test_integration_persistence_save_to_json() {
         .read_to_string(&mut buf)
         .expect("Failed to read from file");
 
-    assert_eq!(buf, "{\"name\":\".\",\"data\":{\"test_key\":{\"value\":\"test_value\",\"data_type\":\"STRING\"}},\"stores\":{\"users\":{\"name\":\"users\",\"data\":{},\"stores\":{\"john_doe\":{\"name\":\"john_doe\",\"data\":{\"age\":{\"value\":\"42\",\"data_type\":\"INT\"}},\"stores\":{}}}}}}");
+    assert!(buf.contains("\"stores\":{\"john_doe\":{\"name\":\"john_doe\""));
+    assert!(buf.contains("\"data\":{\"age\":{\"value\":\"42\",\"data_type\":\"INT\"}"));
 }
 
 #[tokio::test]

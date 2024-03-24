@@ -1,29 +1,45 @@
 use regex::Regex;
-use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 use crate::{
     auth::{Permissions, User},
+    data::{Key, Store, StoreManager},
     session::Session,
 };
 
-#[derive(Debug)]
 pub struct AuthManager {
-    users: HashMap<String, User>, // make it persistent and encrypted
+    store_access: Arc<Mutex<Store>>,
 }
 
 impl AuthManager {
-    pub fn new(
-        admin_username: String,
-        admin_password: String,
-        permission: u8,
-    ) -> Result<AuthManager, String> {
+    pub async fn new(store_access: Arc<Mutex<Store>>) -> Result<AuthManager, String> {
         let mut auth_manager = AuthManager {
-            users: HashMap::new(),
+            store_access: store_access.clone(),
         };
 
-        auth_manager.create_user(admin_username, admin_password, permission)?;
+        auth_manager.setup_auth_store().await?;
 
         Ok(auth_manager)
+    }
+
+    async fn setup_auth_store(&mut self) -> Result<(), String> {
+        let mut store = self.store_access.lock().await;
+
+        match store.get_store(Key::new("_auth".to_string())) {
+            Ok(_) => match store.get_store(Key::new("_auth:users".to_string())) {
+                Ok(_) => return Ok(()),
+                Err(_) => {
+                    store.set_store(Key::new("_auth:users".to_string()))?;
+                    Ok(())
+                }
+            },
+            Err(_) => {
+                store.set_store(Key::new("_auth".to_string()))?;
+                store.set_store(Key::new("_auth:users".to_string()))?;
+                Ok(())
+            }
+        }
     }
 
     fn validate_password(password: &str) -> Result<(), String> {
@@ -52,7 +68,7 @@ impl AuthManager {
         Ok(())
     }
 
-    pub fn create_user(
+    pub async fn create_user(
         &mut self,
         username: String,
         password: String,
@@ -60,31 +76,28 @@ impl AuthManager {
     ) -> Result<String, String> {
         Self::validate_password(&password)?;
 
-        if self.users.contains_key(&username) {
-            return Err("User already exists".to_string());
-        }
-
-        let new_user = match User::new(username.clone(), password.clone(), permission) {
-            Ok(user) => user,
-            Err(e) => return Err(e.to_string()),
-        };
-
-        self.users.insert(username.clone(), new_user);
+        User::create(
+            &username,
+            &password,
+            permission,
+            Arc::clone(&self.store_access),
+        )
+        .await?;
 
         Ok("OK".to_string())
     }
 
-    pub fn delete_user(&mut self, username: String) -> Result<String, String> {
-        match self.users.get(&username) {
-            None => return Err("User does not exist".to_string()),
-            Some(_) => {
-                self.users.remove(&username);
-                Ok("OK".to_string())
-            }
-        }
+    pub async fn delete_user(&mut self, username: String) -> Result<String, String> {
+        let user = User::from_store(&username, Arc::clone(&self.store_access)).await?;
+
+        let user_keys = user.get_user_keys();
+
+        let mut store = self.store_access.lock().await;
+
+        store.del(user_keys.user_store_key)
     }
 
-    pub fn login_user(
+    pub async fn login_user(
         &self,
         username: String,
         password: String,
@@ -92,62 +105,65 @@ impl AuthManager {
     ) -> Result<Session, String> {
         Self::validate_password(&password)?;
 
-        match self.users.get(&username) {
-            None => return Err("Username or password is incorrect".to_string()),
-            Some(user) => {
-                if user.verify_password(&password).map_err(|e| e.to_string())? {
-                    Ok(session.set_authenticated(&username))
-                } else {
-                    Err("Username or password is incorrect".to_string())
-                }
-            }
+        let user = match User::from_store(&username, Arc::clone(&self.store_access)).await {
+            Ok(user) => user,
+            Err(_) => return Err("Username or password is incorrect".to_string()),
+        };
+
+        if user.verify_password(&password).map_err(|e| e.to_string())? {
+            Ok(session.set_authenticated(&username))
+        } else {
+            Err("Username or password is incorrect".to_string())
         }
     }
 
-    pub fn has_user(&self, username: String) -> bool {
-        self.users.contains_key(&username)
+    pub async fn has_user(&self, username: String) -> bool {
+        User::from_store(&username, Arc::clone(&self.store_access))
+            .await
+            .is_ok()
     }
 
-    pub fn check_permission(&self, username: String, permission: Permissions) -> bool {
-        match self.users.get(&username) {
-            None => false,
-            Some(user) => user.permissions & (permission as u8) != 0,
+    pub async fn check_permission(&self, username: String, permission: Permissions) -> bool {
+        let user = match User::from_store(&username, Arc::clone(&self.store_access)).await {
+            Ok(user) => user,
+            Err(_) => return false,
+        };
+
+        user.permissions & (permission as u8) != 0
+    }
+
+    pub async fn get_user(&self, username: String) -> Option<User> {
+        match User::from_store(&username, Arc::clone(&self.store_access)).await {
+            Ok(user) => Some(user),
+            Err(_) => None,
         }
     }
 
-    pub fn get_user(&self, username: String) -> Option<&User> {
-        self.users.get(&username)
-    }
-
-    pub fn grant_permissions(
+    pub async fn grant_permissions(
         &mut self,
         username: String,
         permission: u8,
     ) -> Result<String, String> {
-        match self.users.get(&username) {
-            None => return Err("User does not exist".to_string()),
-            Some(user) => {
-                let new_permissions = user.permissions | permission;
-                self.users
-                    .insert(username.clone(), user.update_permissions(new_permissions));
-                Ok("OK".to_string())
-            }
-        }
+        let mut user = User::from_store(&username, Arc::clone(&self.store_access)).await?;
+
+        let user = user.grant_permission(permission);
+
+        user.save(Arc::clone(&self.store_access)).await?;
+
+        Ok("OK".to_string())
     }
 
-    pub fn revoke_permission(
+    pub async fn revoke_permission(
         &mut self,
         username: String,
         permission: u8,
     ) -> Result<String, String> {
-        match self.users.get(&username) {
-            None => return Err("User does not exist".to_string()),
-            Some(user) => {
-                let new_permissions = user.permissions & !permission;
-                self.users
-                    .insert(username.clone(), user.update_permissions(new_permissions));
-                Ok("OK".to_string())
-            }
-        }
+        let mut user = User::from_store(&username, Arc::clone(&self.store_access)).await?;
+
+        let user = user.revoke_permission(permission);
+
+        user.save(Arc::clone(&self.store_access)).await?;
+
+        Ok("OK".to_string())
     }
 }

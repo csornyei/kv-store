@@ -25,22 +25,17 @@ impl DataManager {
         data: Arc<Mutex<Store>>,
         config: Arc<Mutex<Config>>,
     ) -> Result<DataManager, String> {
-        let auth_manager =
-            AuthManager::new("admin".to_string(), "Password4".to_string(), 255).unwrap();
+        let mut auth_manager = AuthManager::new(Arc::clone(&data)).await.unwrap();
 
-        // let admin_user = config.lock().await.get_admin_user().unwrap();
+        let (admin_username, admin_password) = config.lock().await.get_admin_user();
 
-        // match auth_manager
-        //     .create_user(
-        //         admin_user.username,
-        //         admin_user.password,
-        //         admin_user.permissions,
-        //     )
-        //     .await
-        // {
-        //     Ok(_) => {}
-        //     Err(e) => println!("Error creating admin user: {}", e),
-        // }
+        match auth_manager
+            .create_user(admin_username, admin_password, 255)
+            .await
+        {
+            Ok(_) => {}
+            Err(e) => println!("Error creating admin user: {}", e),
+        }
 
         let persistence = config.lock().await.persistence.clone();
         Ok(DataManager {
@@ -109,7 +104,7 @@ impl DataManager {
                 self.check_auth(&session, Permissions::USER_ADMIN).await?;
 
                 let username = cmd.args[0].clone();
-                match self.auth_manager.get_user(username) {
+                match self.auth_manager.get_user(username).await {
                     Some(user) => Ok((user.to_string(), session)),
                     None => Err("User not found".to_string()),
                 }
@@ -152,7 +147,9 @@ impl DataManager {
                     self.check_permission(&session, p).await?;
                 }
 
-                self.auth_manager.grant_permissions(username, permissions)?;
+                self.auth_manager
+                    .grant_permissions(username, permissions)
+                    .await?;
 
                 Ok(("OK".to_string(), session))
             }
@@ -167,7 +164,9 @@ impl DataManager {
                     self.check_permission(&session, p).await?;
                 }
 
-                self.auth_manager.revoke_permission(username, permission)?;
+                self.auth_manager
+                    .revoke_permission(username, permission)
+                    .await?;
 
                 Ok(("OK".to_string(), session))
             }
@@ -213,6 +212,7 @@ impl DataManager {
         if !self
             .auth_manager
             .check_permission(session.username.clone(), permission)
+            .await
         {
             return Err("User does not have permission".to_string());
         }
@@ -223,7 +223,7 @@ impl DataManager {
         if !session.is_authenticated {
             return Err("User not authenticated".to_string());
         }
-        if !self.auth_manager.has_user(session.username.clone()) {
+        if !self.auth_manager.has_user(session.username.clone()).await {
             return Err("User not authenticated".to_string());
         }
         self.check_permission(session, permission).await?;
@@ -260,7 +260,9 @@ impl DataManager {
         password: String,
         session: Session,
     ) -> Result<Session, String> {
-        self.auth_manager.login_user(user_name, password, session)
+        self.auth_manager
+            .login_user(user_name, password, session)
+            .await
     }
 
     async fn create_user(
@@ -271,10 +273,11 @@ impl DataManager {
     ) -> Result<String, String> {
         self.auth_manager
             .create_user(user_name, password, permissions)
+            .await
     }
 
     async fn delete_user(&mut self, user_name: String) -> Result<String, String> {
-        self.auth_manager.delete_user(user_name)
+        self.auth_manager.delete_user(user_name).await
     }
 
     async fn create_store(&mut self, store_name: Key) -> Result<String, String> {

@@ -2,7 +2,7 @@ use std::fs;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{auth::User, persistence::Persistence};
+use crate::persistence::Persistence;
 
 #[derive(Serialize, Deserialize)]
 pub struct ServerConfig {
@@ -81,12 +81,8 @@ impl Config {
         fs::write(path, config_yaml).unwrap();
     }
 
-    pub fn get_admin_user(&self) -> Result<User, argon2::password_hash::Error> {
-        User::new(
-            self.admin.username.clone(),
-            self.admin.password.clone(),
-            255,
-        )
+    pub fn get_admin_user(&self) -> (String, String) {
+        (self.admin.username.clone(), self.admin.password.clone())
     }
 
     pub fn get_server_address(&self) -> String {

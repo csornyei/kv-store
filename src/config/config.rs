@@ -2,9 +2,9 @@ use std::fs;
 
 use serde::{Deserialize, Serialize};
 
-use crate::persistence::Persistence;
+use crate::{auth::User, persistence::Persistence};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ServerConfig {
     pub address: String,
     pub port: u16,
@@ -19,7 +19,7 @@ impl Default for ServerConfig {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct AdminConfig {
     pub username: String,
     pub password: String,
@@ -34,7 +34,7 @@ impl Default for AdminConfig {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Config {
     pub server: ServerConfig,
     pub persistence: Persistence,
@@ -45,6 +45,14 @@ impl Config {
     pub fn new() -> Self {
         Config {
             server: ServerConfig::default(),
+            persistence: Persistence::new_in_memory(),
+            admin: AdminConfig::default(),
+        }
+    }
+
+    pub fn new_with_server(server: ServerConfig) -> Self {
+        Config {
+            server,
             persistence: Persistence::new_in_memory(),
             admin: AdminConfig::default(),
         }
@@ -67,5 +75,17 @@ impl Config {
         let config_yaml = serde_yaml::to_string(&self).unwrap();
 
         fs::write(path, config_yaml).unwrap();
+    }
+
+    pub fn get_admin_user(&self) -> Result<User, argon2::password_hash::Error> {
+        User::new(
+            self.admin.username.clone(),
+            self.admin.password.clone(),
+            255,
+        )
+    }
+
+    pub fn get_server_address(&self) -> String {
+        format!("{}:{}", self.server.address, self.server.port)
     }
 }

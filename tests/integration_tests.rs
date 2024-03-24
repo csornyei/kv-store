@@ -1,5 +1,6 @@
 extern crate kvstore;
 
+use kvstore::config::{Config, ServerConfig};
 use std::io::{Read, Write};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -32,9 +33,14 @@ async fn start_test_server(port: u16, file_path: Option<String>) -> tokio::task:
     //     Some(path) => Persistence::new_json_file(path),
     //     None => Persistence::new_in_memory(),
     // };
+    let server_config = ServerConfig {
+        address: ADDRESS.to_string(),
+        port,
+    };
     tokio::spawn(async move {
         let data = Arc::new(Mutex::new(Store::new(".".to_string())));
-        start_server(ADDRESS, port, data).await.unwrap();
+        let config = Config::new_with_server(server_config);
+        start_server(config, data).await.unwrap();
     })
 }
 

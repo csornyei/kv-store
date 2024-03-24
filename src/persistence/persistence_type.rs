@@ -1,8 +1,10 @@
 use std::str::FromStr;
 
+use serde::{Deserialize, Serialize};
+
 use crate::data::Store;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 pub enum PersistenceType {
     InMemory,
     JsonFile,
@@ -20,6 +22,7 @@ impl FromStr for PersistenceType {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Persistence {
     persistence_type: PersistenceType,
     file_path: Option<String>,

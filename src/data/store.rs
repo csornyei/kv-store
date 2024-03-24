@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +13,9 @@ pub trait StoreManager: Data {
 
     fn list_keys(&self) -> Result<String, String>;
 
-    fn get_store(&mut self, store_name: String) -> Result<&mut Store, String>;
+    fn get_store(&mut self, store_name: Key) -> Result<&mut Store, String>;
+
+    fn del_store(&mut self, store_name: &Key) -> Result<String, String>;
 }
 
 #[derive(Serialize, Deserialize)]
@@ -37,8 +39,7 @@ impl Store {
             return self.set_value(key, value, data_type);
         }
 
-        let store = key.store.clone().unwrap();
-        let store: &mut Store = self.get_store(store)?;
+        let store: &mut Store = self.get_store(key.get_store_key())?;
 
         let key = key.get_next_key();
 
@@ -47,15 +48,35 @@ impl Store {
 
     pub fn get(&mut self, key: Key) -> Result<String, String> {
         if key.is_value_key() {
+            if key.key.clone().unwrap() == "*".to_string() {
+                return Ok(self.to_string());
+            }
             return self.get_value(key);
         }
 
-        let store = key.store.clone().unwrap();
-        let store: &mut Store = self.get_store(store)?;
+        let store: &mut Store = self.get_store(key.get_store_key())?;
 
         let key = key.get_next_key();
 
         store.get(key)
+    }
+
+    pub fn del(&mut self, key: Key) -> Result<String, String> {
+        if key.is_value_key() {
+            return match self.del_value(&key) {
+                Ok(_) => Ok("OK".to_string()),
+                Err(_) => match self.del_store(&key) {
+                    Ok(_) => Ok("OK".to_string()),
+                    Err(_) => Err("Key not found".to_string()),
+                },
+            };
+        }
+
+        let store: &mut Store = self.get_store(key.get_store_key())?;
+
+        let key = key.get_next_key();
+
+        store.del(key)
     }
 }
 
@@ -91,16 +112,13 @@ impl Data for Store {
         Ok("OK".to_string())
     }
 
-    fn del(&mut self, key: String) -> Result<String, String> {
-        if self.data.contains_key(key.as_str()) {
-            self.data.remove(&key);
+    fn del_value(&mut self, key: &Key) -> Result<String, String> {
+        let value_key = key.key.clone().unwrap();
+        if self.data.contains_key(&value_key) {
+            self.data.remove(&value_key);
             return Ok("OK".to_string());
         }
-        if self.stores.contains_key(key.as_str()) {
-            self.stores.remove(&key);
-            return Ok("OK".to_string());
-        }
-        Err("Key not found".to_string())
+        return Err("Key not found".to_string());
     }
 }
 
@@ -113,7 +131,7 @@ impl StoreManager for Store {
         if store_name.is_value_key() {
             let store_key = store_name.key.unwrap();
             if self.stores.contains_key(&store_key) {
-                return Err("Key already exists".to_string());
+                return Err(format!("Key already exists: {}", store_key));
             }
             let new_store = Store::new(store_key.clone());
 
@@ -121,8 +139,7 @@ impl StoreManager for Store {
 
             return Ok("OK".to_string());
         } else {
-            let store_key = store_name.store.clone().unwrap();
-            let store = self.get_store(store_key.clone())?;
+            let store = self.get_store(store_name.get_store_key())?;
             let store_name = store_name.get_next_key();
             return store.set_store(store_name);
         }
@@ -137,10 +154,36 @@ impl StoreManager for Store {
             .join("\n"))
     }
 
-    fn get_store(&mut self, store_name: String) -> Result<&mut Store, String> {
-        if self.stores.contains_key(&store_name) {
-            return Ok(self.stores.get_mut(&store_name).unwrap());
+    fn get_store(&mut self, store_name: Key) -> Result<&mut Store, String> {
+        if store_name.is_value_key() {
+            let store_key = store_name.key.clone().unwrap();
+            if self.stores.contains_key(&store_key) {
+                return Ok(self.stores.get_mut(&store_key).unwrap());
+            }
+            return Err("Key not found".to_string());
         }
-        Err("Store not found".to_string())
+        let store_key = store_name.get_store_key();
+        let store = self.get_store(store_key)?;
+        let store_name = store_name.get_next_key();
+        return store.get_store(store_name);
+    }
+
+    fn del_store(&mut self, store_name: &Key) -> Result<String, String> {
+        let store_key = store_name.key.clone().unwrap();
+        if self.stores.contains_key(&store_key) {
+            self.stores.remove(&store_key);
+            return Ok("OK".to_string());
+        }
+        return Err("Key not found".to_string());
+    }
+}
+
+impl Display for Store {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)?;
+        for (key, value) in &self.data {
+            write!(f, "\n{}: {}", key, value)?;
+        }
+        Ok(())
     }
 }

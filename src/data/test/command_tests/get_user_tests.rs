@@ -4,7 +4,7 @@ use crate::{commands::Command, data::test::data_tests_utils::*};
 
 #[tokio::test]
 async fn test_command_get_user() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
 
     let cmd = Command::from_str("GET_USER user").unwrap();
     let result_err = data

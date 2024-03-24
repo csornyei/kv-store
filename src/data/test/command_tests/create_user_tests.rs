@@ -4,7 +4,7 @@ use crate::{commands::Command, data::test::data_tests_utils::*, session::Session
 
 #[tokio::test]
 async fn test_command_create_user_success() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
 
     let cmd = Command::from_str("CREATE_USER user Password4").unwrap();
 
@@ -23,7 +23,7 @@ async fn test_command_create_user_success() {
 
 #[tokio::test]
 async fn test_command_create_user_no_more_permission() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
     let cmd = Command::from_str("CREATE_USER user Password4 USER_ADMIN").unwrap();
     let (result, _) = data.handle_command(cmd, create_session()).await.unwrap();
 
@@ -42,7 +42,7 @@ async fn test_command_create_user_no_more_permission() {
 
 #[tokio::test]
 async fn test_command_create_user_check_auth() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
 
     let cmd = Command::from_str("CREATE_USER user Password4").unwrap();
     let result = data.handle_command(cmd, Session::new()).await.unwrap_err();
@@ -72,7 +72,7 @@ async fn test_command_create_user_check_auth() {
 
 #[tokio::test]
 async fn test_command_create_user_permission() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
 
     data.handle_command(
         Command::from_str("CREATE_USER user Password4").unwrap(),

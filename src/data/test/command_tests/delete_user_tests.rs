@@ -4,7 +4,7 @@ use crate::{commands::Command, data::test::data_tests_utils::*, session::Session
 
 #[tokio::test]
 async fn test_command_delete_user() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
 
     let cmd = Command::from_str("CREATE_USER user Password4").unwrap();
     let (result, _) = data.handle_command(cmd, create_session()).await.unwrap();
@@ -28,7 +28,7 @@ async fn test_command_delete_user() {
 
 #[tokio::test]
 async fn test_command_delete_user_not_allowed_after() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
     let admin_session = create_session();
 
     let cmd = Command::from_str("CREATE_USER user Password4 255").unwrap();

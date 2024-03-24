@@ -25,7 +25,7 @@ async fn test_command_set_validate_args() {
 
 #[tokio::test]
 async fn test_command_set_simple_key() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
     let admin_session = create_session();
 
     let cmd = Command::from_str("SET key value").unwrap();
@@ -37,7 +37,7 @@ async fn test_command_set_simple_key() {
 
 #[tokio::test]
 async fn test_command_set_int() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
     let admin_session = create_session();
 
     let cmd = Command::from_str("SET key 10 INT").unwrap();
@@ -49,7 +49,7 @@ async fn test_command_set_int() {
 
 #[tokio::test]
 async fn test_command_set_float() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
     let admin_session = create_session();
 
     let cmd = Command::from_str("SET key 10.5 FLOAT").unwrap();
@@ -61,7 +61,7 @@ async fn test_command_set_float() {
 
 #[tokio::test]
 async fn test_command_set_bool() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
     let admin_session = create_session();
 
     let cmd = Command::from_str("SET key true BOOL").unwrap();
@@ -73,7 +73,7 @@ async fn test_command_set_bool() {
 
 #[tokio::test]
 async fn test_command_set_key_in_store() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
     let admin_session = create_session();
 
     let cmd = Command::from_str("CREATE_STORE store").unwrap();
@@ -91,7 +91,7 @@ async fn test_command_set_key_in_store() {
 
 #[tokio::test]
 async fn test_command_set_key_in_embedded_store() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
     let admin_session = create_session();
 
     let cmd = Command::from_str("CREATE_STORE store").unwrap();
@@ -115,7 +115,7 @@ async fn test_command_set_key_in_embedded_store() {
 
 #[tokio::test]
 async fn test_command_set_permission() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
     let admin_session = create_session();
 
     let cmd = Command::from_str("CREATE_USER user Password4").unwrap();
@@ -150,7 +150,7 @@ async fn test_command_set_permission() {
 
 #[tokio::test]
 async fn test_command_set_check_auth() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
     let session = Session::new();
 
     let cmd = Command::from_str("SET key value").unwrap();

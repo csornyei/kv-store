@@ -4,7 +4,7 @@ use crate::{commands::Command, data::test::data_tests_utils::*, session::Session
 
 #[tokio::test]
 async fn test_command_grant_number() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
     let admin_session = create_session();
 
     let cmd = Command::from_str("CREATE_USER user Password4 0").unwrap();
@@ -32,7 +32,7 @@ async fn test_command_grant_number() {
 
 #[tokio::test]
 async fn test_command_grant_name() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
     let admin_session = create_session();
 
     let cmd = Command::from_str("CREATE_USER user Password4 0").unwrap();
@@ -60,7 +60,7 @@ async fn test_command_grant_name() {
 
 #[tokio::test]
 async fn test_command_grant_name_multiple() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
     let admin_session = create_session();
 
     let cmd = Command::from_str("CREATE_USER user Password4 0").unwrap();
@@ -88,7 +88,7 @@ async fn test_command_grant_name_multiple() {
 
 #[tokio::test]
 async fn test_command_grant_not_more_than_users() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
     let admin_session = create_session();
 
     let cmd = Command::from_str("CREATE_USER user Password4 USER_ADMIN SET").unwrap();

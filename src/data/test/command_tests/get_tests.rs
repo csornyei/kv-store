@@ -4,7 +4,7 @@ use crate::{commands::Command, data::test::data_tests_utils::*, session::Session
 
 #[tokio::test]
 async fn test_command_get_simple_key() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
     let admin_session = create_session();
 
     let cmd = Command::from_str("SET key value").unwrap();
@@ -22,7 +22,7 @@ async fn test_command_get_simple_key() {
 
 #[tokio::test]
 async fn test_command_get_key_in_store() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
     let admin_session = create_session();
 
     let cmd = Command::from_str("CREATE_STORE store").unwrap();
@@ -46,7 +46,7 @@ async fn test_command_get_key_in_store() {
 
 #[tokio::test]
 async fn test_command_get_key_in_embedded_store() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
     let admin_session = create_session();
 
     let cmd = Command::from_str("CREATE_STORE store").unwrap();
@@ -76,7 +76,7 @@ async fn test_command_get_key_in_embedded_store() {
 
 #[tokio::test]
 async fn test_command_get_permission() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
 
     data.handle_command(
         Command::from_str("CREATE_USER user Password4").unwrap(),
@@ -116,7 +116,7 @@ async fn test_command_get_permission() {
 
 #[tokio::test]
 async fn test_command_set_check_auth() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
     let session = Session::new();
 
     data.handle_command(

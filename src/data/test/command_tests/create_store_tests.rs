@@ -4,7 +4,7 @@ use crate::{commands::Command, data::test::data_tests_utils::*};
 
 #[tokio::test]
 async fn test_command_create_store_simple() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
     let admin_session = create_session();
 
     let cmd = Command::from_str("CREATE_STORE store").unwrap();
@@ -16,7 +16,7 @@ async fn test_command_create_store_simple() {
 
 #[tokio::test]
 async fn test_command_create_store_nested() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
     let admin_session = create_session();
 
     let cmd = Command::from_str("CREATE_STORE store").unwrap();

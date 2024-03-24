@@ -4,7 +4,7 @@ use crate::{commands::Command, data::test::data_tests_utils::*};
 
 #[tokio::test]
 async fn test_command_auth_no_user() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
     let cmd = Command::from_str("AUTH user Password4").unwrap();
 
     let result_err = data
@@ -17,7 +17,7 @@ async fn test_command_auth_no_user() {
 
 #[tokio::test]
 async fn test_command_auth_wrong_password() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
 
     let cmd = Command::from_str("CREATE_USER user Password4").unwrap();
 
@@ -35,7 +35,7 @@ async fn test_command_auth_wrong_password() {
 
 #[tokio::test]
 async fn test_command_auth_success() {
-    let mut data = create_data_manager();
+    let mut data = create_data_manager().await;
 
     let cmd = Command::from_str("CREATE_USER user Password4").unwrap();
 

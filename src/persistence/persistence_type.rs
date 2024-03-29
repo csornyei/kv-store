@@ -4,10 +4,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::data::Store;
 
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, Eq, Hash)]
 pub enum PersistenceType {
     InMemory,
     JsonFile,
+    AppendOnlyLogger,
 }
 
 impl FromStr for PersistenceType {
@@ -17,6 +18,7 @@ impl FromStr for PersistenceType {
         match s {
             "in_memory" => Ok(PersistenceType::InMemory),
             "json" => Ok(PersistenceType::JsonFile),
+            "append_only_logger" => Ok(PersistenceType::AppendOnlyLogger),
             _ => Err("Invalid persistence type!".to_string()),
         }
     }

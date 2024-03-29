@@ -2,6 +2,7 @@ use crate::{
     commands::Command,
     config::Config,
     data::{DataManager, Store},
+    persistence::{AppendOnlyLogger, Record},
     session::Session,
 };
 use std::{str::FromStr, sync::Arc};
@@ -60,9 +61,9 @@ impl<'a> ClientHandler {
     ) -> Result<(String, Session), String> {
         let result = data.handle_command(command, session).await?;
 
-            match data.save_to_file().await {
-                Ok(_) => Ok(result),
-                Err(e) => Err(e),
+        match data.save_to_file().await {
+            Ok(_) => Ok(result),
+            Err(e) => Err(e),
         }
     }
 
@@ -100,6 +101,13 @@ impl<'a> ClientHandler {
         let config = Arc::clone(&config);
         let mut data_manager = DataManager::new(data, Arc::clone(&config)).await.unwrap();
 
+        let logger = match config.lock().await.persistence.get_logger() {
+            Some(logger) => match logger.get_path() {
+                Some(path) => Some(AppendOnlyLogger::new(path)),
+                None => panic!("No file path provided for logger"),
+            },
+            None => None,
+        };
 
         loop {
             match self.socket.read(&mut buf).await {
@@ -127,9 +135,12 @@ impl<'a> ClientHandler {
 
                     let mut results = Vec::new();
 
+                    let mut records: Vec<Record> = Vec::new();
+
                     for line in commands {
                         match Command::from_str(line) {
                             Ok(cmd) => {
+                                records.append(&mut Record::new(line.to_string().into_bytes()));
                                 results.push(
                                     self.handle_command_result(
                                         self.execute_command(
@@ -148,6 +159,11 @@ impl<'a> ClientHandler {
                         }
                     }
                     data_manager.save_to_file().await.unwrap();
+
+                    if let Some(logger) = &logger {
+                        logger.append_to_log(records);
+                    }
+
                     self.write_results(results).await;
                 }
             }

@@ -2,7 +2,7 @@ use std::fs;
 
 use serde::{Deserialize, Serialize};
 
-use crate::persistence::Persistence;
+use crate::{config::PersistenceConfig, persistence::Persistence};
 
 #[derive(Serialize, Deserialize)]
 pub struct ServerConfig {
@@ -37,7 +37,7 @@ impl Default for AdminConfig {
 #[derive(Serialize, Deserialize)]
 pub struct Config {
     pub server: ServerConfig,
-    pub persistence: Persistence,
+    pub persistence: PersistenceConfig,
     pub admin: AdminConfig,
 }
 
@@ -45,7 +45,7 @@ impl Config {
     pub fn new() -> Self {
         Config {
             server: ServerConfig::default(),
-            persistence: Persistence::new_in_memory(),
+            persistence: PersistenceConfig::default(),
             admin: AdminConfig::default(),
         }
     }
@@ -55,7 +55,9 @@ impl Config {
     }
 
     pub fn add_persistence_config(&mut self, persistence: Persistence) {
-        self.persistence = persistence;
+        self.persistence
+            .0
+            .insert(persistence.get_type(), persistence);
     }
 
     pub fn add_admin_config(&mut self, username: String, password: String) {

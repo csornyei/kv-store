@@ -1,8 +1,9 @@
-use crate::commands::Command;
-use crate::config::Config;
-use crate::data::{DataManager, Store};
-use crate::persistence::PersistenceType;
-use crate::session::Session;
+use crate::{
+    commands::Command,
+    config::Config,
+    data::{DataManager, Store},
+    session::Session,
+};
 use std::{str::FromStr, sync::Arc};
 use tokio::sync::Mutex;
 use tokio::{
@@ -58,13 +59,10 @@ impl<'a> ClientHandler {
         command: Command,
     ) -> Result<(String, Session), String> {
         let result = data.handle_command(command, session).await?;
-        if data.persistence.get_type() == PersistenceType::JsonFile {
+
             match data.save_to_file().await {
                 Ok(_) => Ok(result),
                 Err(e) => Err(e),
-            }
-        } else {
-            Ok(result)
         }
     }
 
@@ -99,7 +97,9 @@ impl<'a> ClientHandler {
     async fn handle_client(mut self, data: Arc<Mutex<Store>>, config: Arc<Mutex<Config>>) {
         let mut buf = [0; 1024];
         let mut session = Session::new();
-        let mut data_manager = DataManager::new(data, config).await.unwrap();
+        let config = Arc::clone(&config);
+        let mut data_manager = DataManager::new(data, Arc::clone(&config)).await.unwrap();
+
 
         loop {
             match self.socket.read(&mut buf).await {

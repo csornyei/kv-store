@@ -79,6 +79,7 @@ impl Persistence {
                 None => Err("No file path provided".to_string()),
             },
             PersistenceType::InMemory => Ok(Store::new(".".to_string())),
+            _ => Err("Invalid persistence type".to_string()),
         }
     }
 }

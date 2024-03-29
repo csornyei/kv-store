@@ -8,7 +8,7 @@ use super::{
 use crate::{
     auth::{AuthManager, Permissions},
     commands::{Command, CommandNames},
-    config::Config,
+    config::{Config, PersistenceConfig},
     persistence::{Persistence, PersistenceType},
     session::Session,
 };
@@ -17,7 +17,7 @@ use std::{str::FromStr, sync::Arc};
 pub struct DataManager {
     pub data: Arc<Mutex<Store>>,
     auth_manager: AuthManager,
-    pub persistence: Persistence,
+    pub persistence: PersistenceConfig,
 }
 
 impl DataManager {
@@ -46,13 +46,15 @@ impl DataManager {
     }
 
     pub async fn save_to_file(&self) -> Result<(), String> {
-        let data = &self.data.lock().await;
-        if self.persistence.get_type() == PersistenceType::InMemory {
-            return Ok(());
-        }
-        match self.persistence.save_store(data) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e),
+        match self.persistence.get_json_file() {
+            Some(persistence) => {
+                let data = &self.data.lock().await;
+                match persistence.save_store(data) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(e),
+                }
+            }
+            None => Ok(()),
         }
     }
 
